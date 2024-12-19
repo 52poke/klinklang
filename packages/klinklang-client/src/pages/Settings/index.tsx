@@ -4,7 +4,7 @@ import {
   Card,
   CardContent,
   Container,
-  Grid,
+  Grid2,
   IconButton,
   List,
   ListItem,
@@ -52,14 +52,14 @@ export const Settings: React.FC = () => {
 
   return (
     <Container sx={{ my: 2 }}>
-      <Grid container spacing={2}>
-        {(currentUser?.fediAccounts?.length ?? 0) > 0 && (
-          <Grid item xs={12} sm={6}>
+      <Grid2 container spacing={2}>
+        {(currentUser?.fediAccounts.length ?? 0) > 0 && (
+          <Grid2 size={{ xs: 12, sm: 2 }}>
             <Card>
               <CardContent>
                 <Typography variant='h5'>Linked ActivityPub accounts</Typography>
                 <List>
-                  {currentUser?.fediAccounts?.map((account) => (
+                  {currentUser?.fediAccounts.map((account) => (
                     <ListItem
                       key={account.subject}
                       disablePadding
@@ -80,9 +80,9 @@ export const Settings: React.FC = () => {
                 </List>
               </CardContent>
             </Card>
-          </Grid>
+          </Grid2>
         )}
-        <Grid item xs={12} sm={6}>
+        <Grid2 size={{ xs: 12, sm: 6 }}>
           <Card>
             <CardContent>
               <Typography variant='h5' mb={2}>Link to a new ActivityPub account</Typography>
@@ -99,8 +99,8 @@ export const Settings: React.FC = () => {
               </Stack>
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
+        </Grid2>
+      </Grid2>
     </Container>
   )
 }

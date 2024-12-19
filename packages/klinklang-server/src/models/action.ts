@@ -1,7 +1,7 @@
-import { type Action } from '@mudkipme/klinklang-prisma'
+import type { Action } from '@mudkipme/klinklang-prisma'
 import { JSONPath } from 'jsonpath-plus'
 import { mapValues } from 'lodash-es'
-import { type ActionJobData, type Actions } from '../actions/interfaces.js'
+import type { ActionJobData, Actions } from '../actions/interfaces.js'
 import { render } from '../lib/template.js'
 
 type InputBuildType<T> =
@@ -18,13 +18,13 @@ type InputBuildType<T> =
       template: string
     }
     : never)
-  | (T extends any[] ? {
+  | (T extends unknown[] ? {
       mode: 'jsonPathArray'
       jsonPath: string
     }
     : never)
 
-type InputBuilder<T> = T extends any[] ? Array<InputBuilder<T[number]>>
+type InputBuilder<T> = T extends unknown[] ? Array<InputBuilder<T[number]>>
   : (T extends object ? { [P in keyof T]: InputBuilder<T[P]> } : InputBuildType<T>)
 
 function buildInput<T> (builder: InputBuilder<T>, context: Record<string, unknown>): T {
@@ -35,6 +35,7 @@ function buildInput<T> (builder: InputBuilder<T>, context: Record<string, unknow
     return JSONPath<T[]>({ json: context, path: directBuilder.jsonPath })[0]
   } else if (directBuilder.mode === 'jsonPathArray') {
     return JSONPath<T>({ json: context, path: directBuilder.jsonPath })
+    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- template
   } else if (directBuilder.mode === 'template') {
     return render(directBuilder.template, context) as T
   }
@@ -44,7 +45,7 @@ function buildInput<T> (builder: InputBuilder<T>, context: Record<string, unknow
   }
 
   const nestedBuilder = builder as { [P in keyof T]: InputBuilder<T[P]> | InputBuildType<T[P]> }
-  return mapValues(nestedBuilder, (value: InputBuilder<any>) => buildInput(value, context))
+  return mapValues(nestedBuilder, (value: InputBuilder<unknown>) => buildInput(value, context)) as T
 }
 
 export function buildJobData<T extends Actions> (

@@ -1,8 +1,15 @@
-import { type FediAccount, type FediInstance } from '@mudkipme/klinklang-prisma'
+import type { FediAccount, FediInstance } from '@mudkipme/klinklang-prisma'
 import { createOAuthAPIClient, createRestAPIClient } from 'masto'
 import type { Logger } from 'pino'
-import { type Config } from '../lib/config.js'
-import { type PrismaClient } from '../lib/database.js'
+import type { Config } from '../lib/config.js'
+import type { PrismaClient } from '../lib/database.js'
+
+function urlToDomain (url: string): string {
+  if (!url.includes('://')) {
+    url = 'https://' + url
+  }
+  return new URL(url).hostname
+}
 
 export class FediverseService {
   readonly #prisma: PrismaClient
@@ -13,13 +20,6 @@ export class FediverseService {
     this.#prisma = prisma
     this.#config = config
     this.#logger = logger
-  }
-
-  #urlToDomain (url: string): string {
-    if (!url.includes('://')) {
-      url = 'https://' + url
-    }
-    return new URL(url).hostname
   }
 
   #redirectURI (domain: string): string {
@@ -33,7 +33,7 @@ export class FediverseService {
   }
 
   async createApp (url: string): Promise<FediInstance> {
-    const domain = this.#urlToDomain(url)
+    const domain = urlToDomain(url)
     const client = createRestAPIClient({
       url: 'https://' + domain
     })

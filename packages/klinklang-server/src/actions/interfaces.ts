@@ -1,6 +1,6 @@
 import type { DiscordMessageAction } from './discord.js'
-import { type FediPostAction } from './fedi.js'
-import { type RequestAction } from './request.js'
+import type { FediPostAction } from './fedi.js'
+import type { RequestAction } from './request.js'
 import type { SCSSAction } from './scss.js'
 import type { RegExpAction } from './string.js'
 import type { ParseTerminologyListAction, UpdateTerminologyAction } from './terminology.js'

@@ -1,8 +1,7 @@
 import { Container, Typography } from '@mui/material'
 import React from 'react'
 
-export const Workflows: React.FC = () => {
-  return (
+export const Workflows: React.FC = () => (
     <Container>
       <Typography
         sx={{
@@ -16,4 +15,3 @@ export const Workflows: React.FC = () => {
       </Typography>
     </Container>
   )
-}

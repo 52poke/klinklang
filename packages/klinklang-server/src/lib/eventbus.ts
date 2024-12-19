@@ -1,16 +1,16 @@
-import { type PrismaClient, type Workflow } from '@mudkipme/klinklang-prisma'
-import { type Redis } from 'ioredis'
+import type { PrismaClient, Workflow } from '@mudkipme/klinklang-prisma'
+import type { Redis } from 'ioredis'
 import { test as jsonTest } from 'json-predicate'
 import { JSONPath } from 'jsonpath-plus'
 import { type Consumer, type ConsumerConfig, type EachMessagePayload, Kafka, type KafkaConfig } from 'kafkajs'
 import { isEqual } from 'lodash-es'
 import { createHash } from 'node:crypto'
-import { type Logger } from 'pino'
+import type { Logger } from 'pino'
 import { setTimeout } from 'timers/promises'
-import { type WorkflowTrigger } from '../models/workflow-type.js'
+import type { WorkflowTrigger } from '../models/workflow-type.js'
 import { createInstanceWithWorkflow } from '../models/workflow.js'
-import { type Config } from './config.js'
-import { type MessageType, type Notification } from './notification.js'
+import type { Config } from './config.js'
+import type { MessageType, Notification } from './notification.js'
 
 export default class Subscriber {
   readonly #kafka: Kafka
@@ -75,7 +75,7 @@ export default class Subscriber {
     if (data === undefined) {
       return
     }
-    const event = JSON.parse(data)
+    const event = JSON.parse(data) as object
     const workflows = this.#topics.get(topic)
 
     if (workflows === undefined) {
@@ -95,7 +95,7 @@ export default class Subscriber {
           continue
         }
         if (trigger.throttle !== undefined && trigger.throttleKeyPath !== undefined) {
-          const value = JSONPath({ json: event, path: trigger.throttleKeyPath })
+          const value: unknown = JSONPath({ json: event, path: trigger.throttleKeyPath })
           const valueStr = (value === undefined || value === null)
             ? ''
             : (typeof value === 'string' ? value : JSON.stringify(value))
@@ -162,7 +162,7 @@ export async function start ({ config, prisma, notification, logger, redis }: {
   notification.addEventListener('notification', (e: Event) => {
     const evt = e as CustomEvent<MessageType>
     if (evt.detail.type === 'WORKFLOW_EVENTBUS_UPDATE') {
-      update().catch(err => {
+      update().catch((err: unknown) => {
         logger.error(err)
       })
     }

@@ -1,5 +1,5 @@
 import { diContainer } from '@fastify/awilix'
-import { type PrismaPromise } from '@mudkipme/klinklang-prisma'
+import type { PrismaPromise } from '@mudkipme/klinklang-prisma'
 import { load } from 'cheerio'
 import { ActionWorker } from './base.js'
 import type { GetHTMLActionOutput } from './wiki.js'
@@ -19,12 +19,12 @@ export interface ParseTerminologyListAction {
 }
 
 export class ParseTerminologyWorker extends ActionWorker<ParseTerminologyListAction> {
-  public async process (): Promise<ParseTerminologyListOutput> {
+  public process (): ParseTerminologyListOutput {
     const dict = new Map<number, Record<string, string>>()
 
     // load non-zh terminologies
-    let $ = load(this.input.text)
-    const variants = this.input.variants
+    const $ = load(this.input.text)
+    const { variants } = this.input
     const hasVariants = variants !== undefined && Object.keys(variants).length > 0
 
     $(this.input.entrySelector).each((index, line) => {
@@ -55,7 +55,7 @@ export class ParseTerminologyWorker extends ActionWorker<ParseTerminologyListAct
     // load zh terminologies
     if (hasVariants) {
       for (const variant of ['zh-hant', 'zh-hans']) {
-        $ = load(variants?.[variant as 'zh-hant' | 'zh-hans'] ?? this.input.text)
+        const $ = load(variants[variant as 'zh-hant' | 'zh-hans'] ?? this.input.text)
 
         $(this.input.entrySelector).each((index, line) => {
           const textId = this.input.idSelector !== undefined

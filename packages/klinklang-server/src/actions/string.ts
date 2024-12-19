@@ -18,7 +18,7 @@ export interface RegExpAction {
 }
 
 export class RegexWorker extends ActionWorker<RegExpAction> {
-  public async process (): Promise<RegExpActionOutput> {
+  public process (): RegExpActionOutput {
     const regex = new RegExp(this.input.pattern, this.input.flags)
     if (!safe(regex)) {
       throw new Error('UNSAFE_REGEX')

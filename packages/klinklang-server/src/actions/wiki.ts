@@ -1,8 +1,8 @@
 import { diContainer } from '@fastify/awilix'
-import { type EditRequest, type EditResponse } from '../lib/mediawiki/api.js'
+import type { EditRequest, EditResponse } from '../lib/mediawiki/api.js'
 import type MediaWikiClient from '../lib/mediawiki/client.js'
 import { ActionWorker } from './base.js'
-import { type Actions } from './interfaces.js'
+import type { Actions } from './interfaces.js'
 
 export interface GetHTMLActionInput {
   title: string
@@ -29,7 +29,7 @@ export abstract class WikiWorker<T extends Actions> extends ActionWorker<T> {
       return this.#wikiClient
     }
     const workflow = await this.getWorkflow()
-    if (workflow?.user === undefined || workflow?.user === null) {
+    if (workflow?.user === undefined || workflow.user === null) {
       return wikiService.defaultClient
     }
     return wikiService.getWikiClientOfUser(workflow.user)
@@ -82,6 +82,7 @@ export class GetTextWorker extends WikiWorker<GetTextAction> {
     let text = ''
     if (
       response.query.pages.length > 0 && response.query.pages[0].revisions.length > 0
+      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- slots is record
       && response.query.pages[0].revisions[0].slots.main !== undefined
     ) {
       text = response.query.pages[0].revisions[0].slots.main.content

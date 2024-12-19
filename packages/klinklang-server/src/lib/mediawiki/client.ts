@@ -1,13 +1,7 @@
 import createError from '@fastify/error'
-import { type Token } from 'oauth-1.0a'
+import type { Token } from 'oauth-1.0a'
 import type OAuth from 'oauth-1.0a'
-import {
-  type EditRequest,
-  type EditResponse,
-  type ParseResponse,
-  type QueryRevisionResponse,
-  type QueryTokenResponse
-} from './api.js'
+import type { EditRequest, EditResponse, ParseResponse, QueryRevisionResponse, QueryTokenResponse } from './api.js'
 
 export interface MediaWikiClientOptions {
   apiRoot: string
@@ -45,12 +39,12 @@ class MediaWikiClient {
       }
     }
 
-    let body: BodyInit | undefined
+    let body: BodyInit | undefined = undefined
 
     if (form !== undefined) {
       const formData = new URLSearchParams()
       for (const [key, value] of Object.entries(form)) {
-        formData.set(key, `${value as string}`)
+        formData.set(key, value as string)
       }
       body = formData.toString()
     }

@@ -1,4 +1,4 @@
-import { type Predicate } from 'json-predicate'
+import type { Predicate } from 'json-predicate'
 
 export type WorkflowTrigger =
   | {

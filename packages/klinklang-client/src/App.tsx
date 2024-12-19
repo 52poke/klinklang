@@ -1,6 +1,6 @@
 import { Box, Drawer, Toolbar, Typography } from '@mui/material'
 import React, { useEffect, useState } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet } from 'react-router'
 import { KlinklangFooter } from './components/Footer'
 import { KlinklangHeader } from './components/Header'
 import { KlinklangMenu } from './components/Menu'

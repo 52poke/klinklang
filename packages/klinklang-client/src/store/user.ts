@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { type User } from '../interfaces'
+import type { User } from '../interfaces'
 
 export interface UserState {
   currentUser: User | null

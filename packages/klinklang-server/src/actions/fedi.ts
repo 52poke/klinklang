@@ -1,6 +1,6 @@
 import { diContainer } from '@fastify/awilix'
 import { omit } from 'lodash-es'
-import { type mastodon } from 'masto'
+import type { mastodon } from 'masto'
 import { ActionWorker } from './base.js'
 
 export type FediPostActionInput = mastodon.rest.v1.CreateStatusParams & { subject: string }

@@ -5,7 +5,7 @@ import {
   Divider,
   FormControl,
   FormControlLabel,
-  Grid,
+  Grid2,
   InputLabel,
   MenuItem,
   Select,
@@ -77,8 +77,8 @@ export const TermReplacer: React.FC = () => {
 
   return (
     <Container>
-      <Grid container my={2} spacing={2}>
-        <Grid item xs={6} sm={5}>
+      <Grid2 container my={2} spacing={2}>
+        <Grid2 size={{ xs: 6, sm: 5 }}>
           <FormControl fullWidth>
             <InputLabel id='label-from'>From</InputLabel>
             <Select
@@ -94,8 +94,8 @@ export const TermReplacer: React.FC = () => {
               ))}
             </Select>
           </FormControl>
-        </Grid>
-        <Grid item xs={6} sm={5}>
+        </Grid2>
+        <Grid2 size={{ xs: 6, sm: 5 }}>
           <FormControl fullWidth>
             <InputLabel id='label-to'>To</InputLabel>
             <Select
@@ -112,15 +112,15 @@ export const TermReplacer: React.FC = () => {
               ))}
             </Select>
           </FormControl>
-        </Grid>
-        <Grid item xs={12} sm={2}>
+        </Grid2>
+        <Grid2 size={{ xs: 12, sm: 2 }}>
           <Button size='large' variant='contained' fullWidth onClick={replace}>Replace</Button>
-        </Grid>
-      </Grid>
+        </Grid2>
+      </Grid2>
 
-      <Grid container my={2} spacing={2}>
+      <Grid2 container my={2} spacing={2}>
         {categories.map((category) => (
-          <Grid item xs={6} sm={3} md={2} key={category.value}>
+          <Grid2 size={{ xs: 6, sm: 3, md: 2 }} key={category.value}>
             <FormControlLabel
               control={
                 <Checkbox
@@ -133,9 +133,9 @@ export const TermReplacer: React.FC = () => {
               }
               label={category.text}
             />
-          </Grid>
+          </Grid2>
         ))}
-        <Grid item xs={12} sm={3} md={2}>
+        <Grid2 size={{ xs: 12, sm: 3, md: 2 }}>
           <FormControlLabel
             control={
               <Checkbox
@@ -147,13 +147,13 @@ export const TermReplacer: React.FC = () => {
             }
             label='Select All'
           />
-        </Grid>
-      </Grid>
+        </Grid2>
+      </Grid2>
 
       <Divider />
 
-      <Grid container my={2} spacing={2}>
-        <Grid item xs={12} sm={6}>
+      <Grid2 container my={2} spacing={2}>
+        <Grid2 size={{ xs: 12, sm: 6 }}>
           <TextField
             label='Source'
             required
@@ -162,8 +162,8 @@ export const TermReplacer: React.FC = () => {
             rows={10}
             inputRef={sourceEl}
           />
-        </Grid>
-        <Grid item xs={12} sm={6}>
+        </Grid2>
+        <Grid2 size={{ xs: 12, sm: 6 }}>
           <TextField
             label='Result'
             disabled
@@ -172,8 +172,8 @@ export const TermReplacer: React.FC = () => {
             rows={10}
             value={result}
           />
-        </Grid>
-      </Grid>
+        </Grid2>
+      </Grid2>
     </Container>
   )
 }

@@ -1,8 +1,8 @@
 import { diContainer } from '@fastify/awilix'
-import { type User, type Workflow } from '@mudkipme/klinklang-prisma'
-import { type Job } from 'bullmq'
+import type { User, Workflow } from '@mudkipme/klinklang-prisma'
+import type { Job } from 'bullmq'
 import WorkflowInstance from '../models/workflow-instance.js'
-import { type ActionJobData, type ActionJobResult, type Actions } from './interfaces.js'
+import type { ActionJobData, ActionJobResult, Actions } from './interfaces.js'
 
 export type WorkerType<T extends Actions> = new(job: Job<ActionJobData<T>, ActionJobResult<T>>) => ActionWorker<T>
 
@@ -40,7 +40,7 @@ export abstract class ActionWorker<T extends Actions> {
 
   public async handleJob (): Promise<ActionJobResult<T>> {
     const instance = await this.getInstance()
-    if (instance === null || instance === undefined) {
+    if (instance === null) {
       throw new Error('WORKFLOW_INSTANCE_NOT_FOUND')
     }
     await instance.started(this.jobId)
@@ -56,5 +56,5 @@ export abstract class ActionWorker<T extends Actions> {
     }
   }
 
-  public abstract process (): Promise<T['output']>
+  public abstract process (): Promise<T['output']> | T['output']
 }

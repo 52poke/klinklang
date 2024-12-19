@@ -1,6 +1,6 @@
-import { type PrismaClient, type Terminology } from '@mudkipme/klinklang-prisma'
-import { type Logger } from 'pino'
-import { type MessageType, type Notification } from '../lib/notification.js'
+import type { PrismaClient, Terminology } from '@mudkipme/klinklang-prisma'
+import type { Logger } from 'pino'
+import type { MessageType, Notification } from '../lib/notification.js'
 
 export interface TerminologyReplaceInput {
   sourceLng: string
@@ -25,7 +25,7 @@ export class TerminologyService {
   readonly #handleMessage = (e: Event): void => {
     const evt = e as CustomEvent<MessageType>
     if (evt.detail.type === 'TERMINOLOGY_UPDATE' && this.#terminologyDataCache !== undefined) {
-      this.updateTerminologyCache().catch(err => {
+      this.updateTerminologyCache().catch((err: unknown) => {
         this.#logger.error(err)
       })
     }
@@ -40,7 +40,7 @@ export class TerminologyService {
   }
 
   async replace (input: TerminologyReplaceInput): Promise<string> {
-    if (this.#terminologyDataCache === undefined || this.#terminologyDataCache === null) {
+    if (this.#terminologyDataCache === undefined) {
       await this.updateTerminologyCache()
     }
     const terms = (this.#terminologyDataCache ?? []).filter(term =>

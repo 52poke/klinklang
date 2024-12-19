@@ -1,11 +1,11 @@
-import { type Prisma, type PrismaClient } from '@mudkipme/klinklang-prisma'
+import type { Prisma, PrismaClient } from '@mudkipme/klinklang-prisma'
 import { findWorkspaceDir } from '@pnpm/find-workspace-dir'
 import yaml from 'js-yaml'
 import { randomUUID } from 'node:crypto'
 import { readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import { type Config } from '../lib/config.js'
-import { type WorkflowTrigger } from '../models/workflow-type.js'
+import type { Config } from '../lib/config.js'
+import type { WorkflowTrigger } from '../models/workflow-type.js'
 
 export interface WorkflowConfig {
   name: string
@@ -19,7 +19,7 @@ export interface WorkflowConfig {
 export async function setupWorkflow (prisma: PrismaClient, workflowConfig: WorkflowConfig): Promise<void> {
   let workflow = await prisma.workflow.findFirst({ where: { name: workflowConfig.name } })
 
-  if (workflow === null || workflow === undefined) {
+  if (workflow === null) {
     const actions: Prisma.ActionCreateInput[] = []
 
     for (const [index, actionConfig] of workflowConfig.actions.entries()) {
@@ -51,7 +51,7 @@ export async function setupWorkflow (prisma: PrismaClient, workflowConfig: Workf
 
   if (workflowConfig.user !== undefined) {
     const user = await prisma.user.findUnique({ where: { name: workflowConfig.user } })
-    if (user !== null && user !== undefined) {
+    if (user !== null) {
       await prisma.workflow.update({
         where: { id: workflow.id },
         data: {

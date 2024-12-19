@@ -1,7 +1,7 @@
-import { type FastifyPluginAsync } from 'fastify'
+import type { FastifyPluginCallback } from 'fastify'
 import userMiddleware from '../middlewares/user.js'
 
-export const fediRoutes: FastifyPluginAsync = async (fastify) => {
+export const fediRoutes: FastifyPluginCallback = (fastify) => {
   fastify.post<{ Body: { domain: string } }>('/fedi/login', {
     preHandler: userMiddleware(true)
   }, async (request, reply) => {

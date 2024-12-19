@@ -1,7 +1,10 @@
-const love = require('eslint-config-love')
-const reactHooks = require('eslint-plugin-react-hooks')
+import love from 'eslint-config-love'
+import reactHooks from 'eslint-plugin-react-hooks'
 
-module.exports = [
+export default [
+  {
+    ignores: ['**/build/', '**/dist/', 'node_modules/', 'eslint.config.mjs'],
+  },
   {
     ...love,
     files: ['packages/**/*.ts', 'packages/**/*.tsx'],
@@ -15,7 +18,6 @@ module.exports = [
         project: ['./packages/*/tsconfig.json']
       }
     },
-    ignores: ['build', 'dist', 'node_modules', 'eslint.config.cjs'],
     rules: {
       ...love.rules,
       ...reactHooks.configs.recommended.rules,
@@ -26,7 +28,11 @@ module.exports = [
             properties: false
           }
         }
-      ]
+      ],
+      '@typescript-eslint/prefer-destructuring': 'off',
+      'complexity': 'off',
+      '@typescript-eslint/no-magic-numbers': 'off',
+      '@typescript-eslint/no-unsafe-type-assertion': 'off'
     }
   }
 ]

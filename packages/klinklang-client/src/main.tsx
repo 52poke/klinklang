@@ -1,8 +1,7 @@
-import { ThemeProvider } from '@emotion/react'
-import { CssBaseline } from '@mui/material'
+import { CssBaseline, ThemeProvider } from '@mui/material'
 import * as React from 'react'
 import * as ReactDOM from 'react-dom/client'
-import { createBrowserRouter, RouterProvider } from 'react-router-dom'
+import { createBrowserRouter, RouterProvider } from 'react-router'
 import { App } from './App'
 import { Settings } from './pages/Settings'
 import { TermReplacer } from './pages/TermReplacer'
@@ -34,7 +33,7 @@ const router = createBrowserRouter([
   }
 ])
 
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+// eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- root element is always present
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <ThemeProvider theme={theme}>

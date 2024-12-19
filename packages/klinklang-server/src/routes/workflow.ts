@@ -1,16 +1,16 @@
-import { type FastifyPluginAsync, type FastifyRequest } from 'fastify'
+import type { FastifyPluginCallback, FastifyRequest } from 'fastify'
 import { forbiddenError, workflowNotFoundError } from '../lib/errors.js'
 import userMiddleware from '../middlewares/user.js'
 import { createInstanceWithWorkflow, getLinkedActionsOfWorkflow, getWorkflowInstances } from '../models/workflow.js'
 
-const workflowRoutes: FastifyPluginAsync = async (fastify) => {
-  const prisma = fastify.diContainer.cradle.prisma
+const workflowRoutes: FastifyPluginCallback = (fastify) => {
+  const { prisma } = fastify.diContainer.cradle
 
   fastify.route({
     method: 'GET',
     url: '/api/workflow',
     preHandler: userMiddleware(true),
-    handler: async (request: FastifyRequest<{ Querystring: { offset: string; limit: string } }>, reply) => {
+    handler: async (request: FastifyRequest<{ Querystring: { offset?: string; limit?: string } }>, reply) => {
       const offset = request.query.offset !== undefined ? parseInt(request.query.offset, 10) : 0
       const limit = request.query.limit !== undefined ? Math.max(parseInt(request.query.limit, 10), 200) : 20
       const workflows = await prisma.workflow.findMany({ skip: offset, take: limit })
@@ -28,7 +28,7 @@ const workflowRoutes: FastifyPluginAsync = async (fastify) => {
       request: FastifyRequest<{ Querystring: { start: string; stop: string }; Params: { workflowId: string } }>
     ) => {
       const workflow = await prisma.workflow.findUnique({ where: { id: request.params.workflowId } })
-      if (workflow === null || workflow === undefined) {
+      if (workflow === null) {
         throw workflowNotFoundError()
       }
       const actions = await getLinkedActionsOfWorkflow(workflow)
@@ -43,10 +43,10 @@ const workflowRoutes: FastifyPluginAsync = async (fastify) => {
     url: '/api/workflow/:workflowId/instances',
     preHandler: userMiddleware(true),
     handler: async (
-      request: FastifyRequest<{ Querystring: { start: string; stop: string }; Params: { workflowId: string } }>
+      request: FastifyRequest<{ Querystring: { start?: string; stop?: string }; Params: { workflowId: string } }>
     ) => {
       const workflow = await prisma.workflow.findUnique({ where: { id: request.params.workflowId } })
-      if (workflow === null || workflow === undefined) {
+      if (workflow === null) {
         throw workflowNotFoundError()
       }
       const start = request.query.start !== undefined ? parseInt(request.query.start, 10) : 0
@@ -67,13 +67,13 @@ const workflowRoutes: FastifyPluginAsync = async (fastify) => {
         where: { id: request.params.workflowId },
         include: { user: true }
       })
-      if (workflow === null || workflow === undefined) {
+      if (workflow === null) {
         throw workflowNotFoundError()
       }
 
       if (workflow.isPrivate) {
         const workflowOwner = workflow.user
-        if (workflowOwner !== null && workflowOwner !== undefined && workflowOwner.id !== request.user?.id) {
+        if (workflowOwner !== null && workflowOwner.id !== request.user?.id) {
           throw forbiddenError()
         }
       }

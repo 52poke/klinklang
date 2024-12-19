@@ -15,7 +15,7 @@ import {
   Typography
 } from '@mui/material'
 import React, { useCallback, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router'
 import { useUserStore } from '../../store/user'
 
 export interface KlinklangHeaderProps {
@@ -75,7 +75,7 @@ export const KlinklangHeader: React.FC<KlinklangHeaderProps> = ({ onDrawerOpen }
               ? [
                 <MenuItem
                   onClick={() => {
-                    navigate('/pages/settings')
+                    void navigate('/pages/settings')
                     setAnchorEl(null)
                   }}
                   key='settings'

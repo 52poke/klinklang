@@ -1,4 +1,4 @@
-import { type FastifyReply, type FastifyRequest, type RouteGenericInterface } from 'fastify'
+import type { FastifyReply, FastifyRequest, RouteGenericInterface } from 'fastify'
 import { unauthorizedError } from '../lib/errors.js'
 
 const userMiddleware = <T extends RouteGenericInterface>(requireLogin: boolean) =>
@@ -9,7 +9,7 @@ const userMiddleware = <T extends RouteGenericInterface>(requireLogin: boolean) 
           where: { id: request.session.userId },
           include: { fediAccounts: true }
         })
-        if (user === null || user === undefined) {
+        if (user === null) {
           if (requireLogin) {
             throw unauthorizedError()
           }

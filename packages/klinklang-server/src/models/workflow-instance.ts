@@ -1,10 +1,10 @@
 import { diContainer } from '@fastify/awilix'
-import { type Action } from '@mudkipme/klinklang-prisma'
-import { type Job } from 'bullmq'
+import type { Action } from '@mudkipme/klinklang-prisma'
+import type { Job } from 'bullmq'
 import { randomUUID } from 'node:crypto'
-import { type ActionJobData, type ActionJobResult, type Actions } from '../actions/interfaces.js'
+import type { ActionJobData, ActionJobResult, Actions } from '../actions/interfaces.js'
 import { buildJobData } from './action.js'
-import { type WorkflowTrigger } from './workflow-type.js'
+import type { WorkflowTrigger } from './workflow-type.js'
 
 export interface WorkflowInstanceData {
   workflowId: string
@@ -73,13 +73,13 @@ class WorkflowInstance {
     await this.save()
   }
 
-  public async update<T extends Actions> (currentActionId: string, output: T['output']): Promise<void> {
+  public async update (currentActionId: string, output: Actions['output']): Promise<void> {
     const { prisma } = diContainer.cradle
     const action = await prisma.action.findUnique({ where: { id: currentActionId } })
-    if (action === null || action === undefined) {
+    if (action === null) {
       throw new Error('ERR_ACTION_NOT_FOUND')
     }
-    if (action.outputContext !== undefined && action.outputContext !== null && action.outputContext !== '') {
+    if (action.outputContext !== null && action.outputContext !== '') {
       this.context[action.outputContext] = output
     } else {
       this.context.payload = output
@@ -104,11 +104,11 @@ class WorkflowInstance {
   ): Promise<Job<ActionJobData<T>, ActionJobResult<T>> | null> {
     const { prisma, queue } = diContainer.cradle
     const action = await prisma.action.findUnique({ where: { id: currentActionId }, include: { nextAction: true } })
-    if (action === null || action === undefined) {
+    if (action === null) {
       throw new Error('ERR_ACTION_NOT_FOUND')
     }
-    const nextAction = action.nextAction
-    if (nextAction === null || nextAction === undefined) {
+    const { nextAction } = action
+    if (nextAction === null) {
       return null
     }
 

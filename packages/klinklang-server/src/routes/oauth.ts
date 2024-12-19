@@ -1,9 +1,9 @@
 import createError from '@fastify/error'
-import { type Prisma } from '@mudkipme/klinklang-prisma'
-import { type FastifyPluginAsync, type FastifyRequest } from 'fastify'
-import { type Token } from 'oauth-1.0a'
+import type { Prisma } from '@mudkipme/klinklang-prisma'
+import type { FastifyPluginCallback, FastifyRequest } from 'fastify'
+import type { Token } from 'oauth-1.0a'
 
-const oauthRoutes: FastifyPluginAsync = async (fastify) => {
+const oauthRoutes: FastifyPluginCallback = (fastify) => {
   fastify.get('/oauth/login', async (request, reply) => {
     const { url, token } = await fastify.diContainer.cradle.mediaWikiOAuth.getRedirectURL()
     request.session.loginToken = token
@@ -24,7 +24,7 @@ const oauthRoutes: FastifyPluginAsync = async (fastify) => {
 
       const identity = await mediaWikiOAuth.getIdentity(token)
       let user = await prisma.user.findUnique({ where: { wikiId: identity.sub } })
-      if (user === null || user === undefined) {
+      if (user === null) {
         user = await prisma.user.create({
           data: {
             wikiId: identity.sub,

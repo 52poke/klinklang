@@ -3,7 +3,7 @@ import fastifyCookie from '@fastify/cookie'
 import fastifySession from '@fastify/session'
 import fastifyStatic from '@fastify/static'
 import { findWorkspaceDir } from '@pnpm/find-workspace-dir'
-import RedisStore from 'connect-redis'
+import { RedisStore } from 'connect-redis'
 import { fastify } from 'fastify'
 import { join } from 'node:path'
 import bootstrap from './commands/bootstrap.js'
@@ -30,7 +30,7 @@ const launch = async (): Promise<void> => {
 
   await bootstrap({ config, prisma })
   await start({ config, prisma, notification, logger, redis })
-  worker.run().catch(e => {
+  worker.run().catch((e: unknown) => {
     logger.error(e)
   })
   patchBigInt()
@@ -38,7 +38,7 @@ const launch = async (): Promise<void> => {
   const { host, port, devPort } = config.get('app')
   const workspaceRoot = await findWorkspaceDir(process.cwd())
   const buildPath = join(workspaceRoot !== undefined ? `${workspaceRoot}/packages/klinklang-client` : '.', 'build')
-  const server = fastify({ logger, trustProxy: true })
+  const server = fastify({ loggerInstance: logger, trustProxy: true })
 
   await server.register(fastifyCookie)
   await server.register(fastifySession, {
@@ -74,6 +74,6 @@ process.on('unhandledRejection', (err) => {
   process.exit(1)
 })
 
-launch().catch(e => {
+launch().catch((e: unknown) => {
   console.log(e)
 })

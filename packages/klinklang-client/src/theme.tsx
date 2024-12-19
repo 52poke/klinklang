@@ -1,6 +1,6 @@
 import { createTheme } from '@mui/material/styles'
 import React from 'react'
-import { Link as RouterLink, type LinkProps as RouterLinkProps } from 'react-router-dom'
+import { Link as RouterLink, type LinkProps as RouterLinkProps } from 'react-router'
 
 const LinkBehavior = React.forwardRef<
   HTMLAnchorElement,
@@ -17,7 +17,7 @@ const theme = createTheme({
         component: LinkBehavior
       }
     },
-    MuiButtonBase: {
+    MuiListItemButton: {
       defaultProps: {
         LinkComponent: LinkBehavior
       }
