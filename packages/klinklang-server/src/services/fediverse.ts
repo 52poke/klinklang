@@ -1,8 +1,8 @@
 import type { FediAccount, FediInstance } from '@mudkipme/klinklang-prisma'
 import { createOAuthAPIClient, createRestAPIClient } from 'masto'
 import type { Logger } from 'pino'
-import type { Config } from '../lib/config.js'
-import type { PrismaClient } from '../lib/database.js'
+import type { Config } from '../lib/config.ts'
+import type { PrismaClient } from '../lib/database.ts'
 
 function urlToDomain (url: string): string {
   if (!url.includes('://')) {

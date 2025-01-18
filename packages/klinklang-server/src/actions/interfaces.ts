@@ -1,10 +1,10 @@
-import type { DiscordMessageAction } from './discord.js'
-import type { FediPostAction } from './fedi.js'
-import type { RequestAction } from './request.js'
-import type { SCSSAction } from './scss.js'
-import type { RegExpAction } from './string.js'
-import type { ParseTerminologyListAction, UpdateTerminologyAction } from './terminology.js'
-import type { EditWikiAction, GetHTMLAction, GetTextAction } from './wiki.js'
+import type { DiscordMessageAction } from './discord.ts'
+import type { FediPostAction } from './fedi.ts'
+import type { RequestAction } from './request.ts'
+import type { SCSSAction } from './scss.ts'
+import type { RegExpAction } from './string.ts'
+import type { ParseTerminologyListAction, UpdateTerminologyAction } from './terminology.ts'
+import type { EditWikiAction, GetHTMLAction, GetTextAction } from './wiki.ts'
 
 export type Actions =
   | GetHTMLAction

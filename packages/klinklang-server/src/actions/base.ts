@@ -1,8 +1,8 @@
 import { diContainer } from '@fastify/awilix'
 import type { User, Workflow } from '@mudkipme/klinklang-prisma'
 import type { Job } from 'bullmq'
-import WorkflowInstance from '../models/workflow-instance.js'
-import type { ActionJobData, ActionJobResult, Actions } from './interfaces.js'
+import WorkflowInstance from '../models/workflow-instance.ts'
+import type { ActionJobData, ActionJobResult, Actions } from './interfaces.ts'
 
 export type WorkerType<T extends Actions> = new(job: Job<ActionJobData<T>, ActionJobResult<T>>) => ActionWorker<T>
 

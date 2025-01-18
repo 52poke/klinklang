@@ -1,5 +1,5 @@
 import { Redis } from 'ioredis'
-import type { Config } from './config.js'
+import type { Config } from './config.ts'
 
 export const getRedis = ({ config }: { config: Config }): Redis =>
   new Redis({

@@ -1,5 +1,5 @@
 import type { FastifyPluginCallback, FastifyRequest } from 'fastify'
-import type { TerminologyReplaceInput } from '../services/terminology.js'
+import type { TerminologyReplaceInput } from '../services/terminology.ts'
 
 const terminologyRoutes: FastifyPluginCallback = (fastify) => {
   fastify.post('/api/terminology/replace', async (request: FastifyRequest<{ Body: TerminologyReplaceInput }>) => {

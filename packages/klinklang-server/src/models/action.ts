@@ -1,8 +1,8 @@
 import type { Action } from '@mudkipme/klinklang-prisma'
 import { JSONPath } from 'jsonpath-plus'
 import { mapValues } from 'lodash-es'
-import type { ActionJobData, Actions } from '../actions/interfaces.js'
-import { render } from '../lib/template.js'
+import type { ActionJobData, Actions } from '../actions/interfaces.ts'
+import { render } from '../lib/template.ts'
 
 type InputBuildType<T> =
   | {

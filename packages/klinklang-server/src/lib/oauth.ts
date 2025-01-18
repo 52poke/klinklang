@@ -1,7 +1,7 @@
 import crypto from 'crypto'
 import jwt from 'jsonwebtoken'
 import OAuth from 'oauth-1.0a'
-import type { Config } from './config.js'
+import type { Config } from './config.ts'
 
 export interface OAuthIdentity {
   iss: string

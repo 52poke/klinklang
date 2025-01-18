@@ -1,4 +1,4 @@
-import { ActionWorker } from './base.js'
+import { ActionWorker } from './base.ts'
 
 export interface RequestActionInput {
   method: string

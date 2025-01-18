@@ -1,7 +1,7 @@
 import createError from '@fastify/error'
 import type { Token } from 'oauth-1.0a'
 import type OAuth from 'oauth-1.0a'
-import type { EditRequest, EditResponse, ParseResponse, QueryRevisionResponse, QueryTokenResponse } from './api.js'
+import type { EditRequest, EditResponse, ParseResponse, QueryRevisionResponse, QueryTokenResponse } from './api.ts'
 
 export interface MediaWikiClientOptions {
   apiRoot: string

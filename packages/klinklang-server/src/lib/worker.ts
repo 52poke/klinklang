@@ -1,8 +1,8 @@
 import { type Job, Worker } from 'bullmq'
 import type { Logger } from 'pino'
-import type { ActionJobData, ActionJobResult, Actions } from '../actions/interfaces.js'
-import { processAction } from '../actions/register.js'
-import type { Config } from './config.js'
+import type { ActionJobData, ActionJobResult, Actions } from '../actions/interfaces.ts'
+import { processAction } from '../actions/register.ts'
+import type { Config } from './config.ts'
 
 const queueName = 'klinklang-queue'
 

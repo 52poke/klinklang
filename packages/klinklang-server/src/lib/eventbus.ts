@@ -7,10 +7,10 @@ import { isEqual } from 'lodash-es'
 import { createHash } from 'node:crypto'
 import type { Logger } from 'pino'
 import { setTimeout } from 'timers/promises'
-import type { WorkflowTrigger } from '../models/workflow-type.js'
-import { createInstanceWithWorkflow } from '../models/workflow.js'
-import type { Config } from './config.js'
-import type { MessageType, Notification } from './notification.js'
+import type { WorkflowTrigger } from '../models/workflow-type.ts'
+import { createInstanceWithWorkflow } from '../models/workflow.ts'
+import type { Config } from './config.ts'
+import type { MessageType, Notification } from './notification.ts'
 
 export default class Subscriber {
   readonly #kafka: Kafka

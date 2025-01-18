@@ -1,5 +1,5 @@
 import safe from 'safe-regex'
-import { ActionWorker } from './base.js'
+import { ActionWorker } from './base.ts'
 
 export interface RegExpActionInput {
   text: string

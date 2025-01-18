@@ -1,8 +1,8 @@
 import { diContainer } from '@fastify/awilix'
 import type { Action, Workflow } from '@mudkipme/klinklang-prisma'
 import { keyBy } from 'lodash-es'
-import WorkflowInstance from './workflow-instance.js'
-import type { WorkflowTrigger } from './workflow-type.js'
+import WorkflowInstance from './workflow-instance.ts'
+import type { WorkflowTrigger } from './workflow-type.ts'
 
 export async function getWorkflowInstances (workflow: Workflow, start = 0, stop = 100): Promise<WorkflowInstance[]> {
   return await WorkflowInstance.getInstancesOfWorkflow(workflow.id, start, stop)

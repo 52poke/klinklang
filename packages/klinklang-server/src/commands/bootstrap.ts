@@ -4,8 +4,8 @@ import yaml from 'js-yaml'
 import { randomUUID } from 'node:crypto'
 import { readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
-import type { Config } from '../lib/config.js'
-import type { WorkflowTrigger } from '../models/workflow-type.js'
+import type { Config } from '../lib/config.ts'
+import type { WorkflowTrigger } from '../models/workflow-type.ts'
 
 export interface WorkflowConfig {
   name: string

@@ -1,8 +1,8 @@
 import { diContainer } from '@fastify/awilix'
 import type { PrismaPromise } from '@mudkipme/klinklang-prisma'
 import { load } from 'cheerio'
-import { ActionWorker } from './base.js'
-import type { GetHTMLActionOutput } from './wiki.js'
+import { ActionWorker } from './base.ts'
+import type { GetHTMLActionOutput } from './wiki.ts'
 
 export type ParseTerminologyListActionInput = GetHTMLActionOutput & {
   entrySelector: string

@@ -1,5 +1,5 @@
 import type { FastifyPluginCallback } from 'fastify'
-import userMiddleware from '../middlewares/user.js'
+import userMiddleware from '../middlewares/user.ts'
 
 export const fediRoutes: FastifyPluginCallback = (fastify) => {
   fastify.post<{ Body: { domain: string } }>('/fedi/login', {

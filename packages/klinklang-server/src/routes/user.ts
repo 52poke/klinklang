@@ -1,6 +1,6 @@
 import type { FastifyPluginCallback } from 'fastify'
-import userMiddleware from '../middlewares/user.js'
-import { outputUser } from '../models/user.js'
+import userMiddleware from '../middlewares/user.ts'
+import { outputUser } from '../models/user.ts'
 
 const userRoutes: FastifyPluginCallback = (fastify) => {
   fastify.get('/api/user/me', { preHandler: userMiddleware(false) }, async (request, reply) => {

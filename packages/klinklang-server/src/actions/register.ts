@@ -1,13 +1,13 @@
 import type { Job } from 'bullmq'
-import type { WorkerType } from './base.js'
-import { DiscordMessageWorker } from './discord.js'
-import { FediPostWorker } from './fedi.js'
-import type { ActionJobData, ActionJobResult, Actions } from './interfaces.js'
-import { RequestWorker } from './request.js'
-import { SCSSWorker } from './scss.js'
-import { RegexWorker } from './string.js'
-import { ParseTerminologyWorker, UpdateTerminologyWorker } from './terminology.js'
-import { EditWikiWorker, GetHTMLWorker, GetTextWorker } from './wiki.js'
+import type { WorkerType } from './base.ts'
+import { DiscordMessageWorker } from './discord.ts'
+import { FediPostWorker } from './fedi.ts'
+import type { ActionJobData, ActionJobResult, Actions } from './interfaces.ts'
+import { RequestWorker } from './request.ts'
+import { SCSSWorker } from './scss.ts'
+import { RegexWorker } from './string.ts'
+import { ParseTerminologyWorker, UpdateTerminologyWorker } from './terminology.ts'
+import { EditWikiWorker, GetHTMLWorker, GetTextWorker } from './wiki.ts'
 
 interface ActionRegisterMap {
   set: <T extends Actions>(key: T['actionType'], value: WorkerType<T>) => void

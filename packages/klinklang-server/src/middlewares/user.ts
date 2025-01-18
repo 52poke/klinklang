@@ -1,5 +1,5 @@
 import type { FastifyReply, FastifyRequest, RouteGenericInterface } from 'fastify'
-import { unauthorizedError } from '../lib/errors.js'
+import { unauthorizedError } from '../lib/errors.ts'
 
 const userMiddleware = <T extends RouteGenericInterface>(requireLogin: boolean) =>
   async function(request: FastifyRequest<T>, reply: FastifyReply) {

@@ -1,6 +1,6 @@
 import type { PrismaClient, Terminology } from '@mudkipme/klinklang-prisma'
 import type { Logger } from 'pino'
-import type { MessageType, Notification } from '../lib/notification.js'
+import type { MessageType, Notification } from '../lib/notification.ts'
 
 export interface TerminologyReplaceInput {
   sourceLng: string

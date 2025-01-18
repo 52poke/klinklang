@@ -1,8 +1,8 @@
 import { diContainer } from '@fastify/awilix'
-import type { EditRequest, EditResponse } from '../lib/mediawiki/api.js'
-import type MediaWikiClient from '../lib/mediawiki/client.js'
-import { ActionWorker } from './base.js'
-import type { Actions } from './interfaces.js'
+import type { EditRequest, EditResponse } from '../lib/mediawiki/api.ts'
+import type MediaWikiClient from '../lib/mediawiki/client.ts'
+import { ActionWorker } from './base.ts'
+import type { Actions } from './interfaces.ts'
 
 export interface GetHTMLActionInput {
   title: string

@@ -1,5 +1,5 @@
 import sass from 'sass'
-import { ActionWorker } from './base.js'
+import { ActionWorker } from './base.ts'
 
 export interface SCSSActionInput {
   scss: string

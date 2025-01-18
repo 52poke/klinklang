@@ -2,9 +2,9 @@ import { diContainer } from '@fastify/awilix'
 import type { Action } from '@mudkipme/klinklang-prisma'
 import type { Job } from 'bullmq'
 import { randomUUID } from 'node:crypto'
-import type { ActionJobData, ActionJobResult, Actions } from '../actions/interfaces.js'
-import { buildJobData } from './action.js'
-import type { WorkflowTrigger } from './workflow-type.js'
+import type { ActionJobData, ActionJobResult, Actions } from '../actions/interfaces.ts'
+import { buildJobData } from './action.ts'
+import type { WorkflowTrigger } from './workflow-type.ts'
 
 export interface WorkflowInstanceData {
   workflowId: string
