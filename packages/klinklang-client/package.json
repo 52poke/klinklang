@@ -21,7 +21,7 @@
     "url": "https://github.com/mudkipme/klinklang/issues"
   },
   "devDependencies": {
-    "vite": "^6.0.3"
+    "vite": "^6.0.9"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
