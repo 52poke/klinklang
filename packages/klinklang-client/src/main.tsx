@@ -5,6 +5,8 @@ import { App } from './App'
 import { Settings } from './pages/Settings'
 import { TermReplacer } from './pages/TermReplacer'
 import { Workflows } from './pages/Workflows'
+import { WorkflowDetail } from './pages/Workflows/Detail'
+import { WorkflowInstances } from './pages/Workflows/Instances'
 import './globals.css'
 
 const router = createBrowserRouter([
@@ -19,6 +21,14 @@ const router = createBrowserRouter([
       {
         path: '/pages/workflows',
         element: <Workflows />
+      },
+      {
+        path: '/pages/workflows/:workflowId',
+        element: <WorkflowDetail />
+      },
+      {
+        path: '/pages/workflows/:workflowId/instances',
+        element: <WorkflowInstances />
       },
       {
         path: '/pages/settings',

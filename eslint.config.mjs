@@ -8,6 +8,7 @@ export default [
       '**/dist/',
       'node_modules/',
       'eslint.config.mjs',
+      'tailwind.config.cjs',
       'packages/klinklang-client/src/components/ui/**'
     ],
   },

@@ -23,7 +23,11 @@ export const App: React.FC = () => {
             <div className='text-sm text-muted-foreground'>Utilities for 52Poké Wiki</div>
           </div>
           <div className='px-2 py-3'>
-            <KlinklangMenu />
+            <KlinklangMenu
+              onNavigate={() => {
+                setDrawerOpen(false)
+              }}
+            />
           </div>
         </SheetContent>
       </Sheet>

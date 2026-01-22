@@ -13,7 +13,16 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
     handler: async (request: FastifyRequest<{ Querystring: { offset?: string; limit?: string } }>, reply) => {
       const offset = request.query.offset === undefined ? 0 : parseInt(request.query.offset, 10)
       const limit = request.query.limit === undefined ? 20 : Math.max(parseInt(request.query.limit, 10), 200)
-      const workflows = await prisma.workflow.findMany({ skip: offset, take: limit })
+      const workflows = await prisma.workflow.findMany({
+        skip: offset,
+        take: limit,
+        where: {
+          OR: [
+            { isPrivate: false },
+            { userId: request.user?.id ?? null }
+          ]
+        }
+      })
       await reply.send({
         workflows
       })
