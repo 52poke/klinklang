@@ -133,7 +133,7 @@ class WorkflowInstance {
     if (definitionValue === null) {
       throw new Error('ERR_WORKFLOW_DEFINITION_NOT_FOUND')
     }
-    const definition = definitionValue as StateMachineDefinition
+    const definition = definitionValue as unknown as StateMachineDefinition
     const startStateName = definition.StartAt
     const startState = getTaskState(definition, startStateName)
     const instanceId = randomUUID()
@@ -201,7 +201,7 @@ class WorkflowInstance {
     if (definitionValue === null) {
       throw new Error('ERR_WORKFLOW_DEFINITION_NOT_FOUND')
     }
-    const definition = definitionValue as StateMachineDefinition
+    const definition = definitionValue as unknown as StateMachineDefinition
     this.#definition = definition
     return definition
   }

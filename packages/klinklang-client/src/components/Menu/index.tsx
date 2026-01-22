@@ -1,6 +1,6 @@
-import { List, ListItem, ListItemButton, ListItemText } from '@mui/material'
 import React from 'react'
-import { useLocation } from 'react-router'
+import { NavLink } from 'react-router'
+import { cn } from '../../lib/utils'
 
 const menus = [
   {
@@ -14,17 +14,22 @@ const menus = [
 ]
 
 export const KlinklangMenu: React.FC = () => {
-  const location = useLocation()
-
   return (
-    <List>
+    <nav className='flex flex-col gap-1'>
       {menus.map((menu) => (
-        <ListItem key={menu.title} disablePadding>
-          <ListItemButton href={menu.link} selected={location.pathname === menu.link}>
-            <ListItemText primary={menu.title} />
-          </ListItemButton>
-        </ListItem>
+        <NavLink
+          key={menu.title}
+          to={menu.link}
+          className={({ isActive }) =>
+            cn(
+              'rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted',
+              isActive && 'bg-muted text-foreground'
+            )
+          }
+        >
+          {menu.title}
+        </NavLink>
       ))}
-    </List>
+    </nav>
   )
 }

@@ -3,7 +3,13 @@ import reactHooks from 'eslint-plugin-react-hooks'
 
 export default [
   {
-    ignores: ['**/build/', '**/dist/', 'node_modules/', 'eslint.config.mjs'],
+    ignores: [
+      '**/build/',
+      '**/dist/',
+      'node_modules/',
+      'eslint.config.mjs',
+      'packages/klinklang-client/src/components/ui/**'
+    ],
   },
   {
     ...love,

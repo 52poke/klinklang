@@ -3,13 +3,13 @@ import fastifyCookie from '@fastify/cookie'
 import fastifySession from '@fastify/session'
 import fastifyStatic from '@fastify/static'
 import { findWorkspaceDir } from '@pnpm/find-workspace-dir'
-import { RedisStore } from 'connect-redis'
 import { fastify } from 'fastify'
 import { join } from 'node:path'
 import bootstrap from './commands/bootstrap.ts'
 import { start } from './lib/eventbus.ts'
 import patchBigInt from './lib/ext.ts'
 import { register } from './lib/register.ts'
+import { RedisSessionStore } from './lib/session-store.ts'
 import { fediRoutes } from './routes/fedi.ts'
 import oauth from './routes/oauth.ts'
 import terminologyRoutes from './routes/terminology.ts'
@@ -46,7 +46,7 @@ const launch = async (): Promise<void> => {
   await server.register(fastifySession, {
     secret: config.get('app').secret,
     cookie: { secure: process.env.NODE_ENV === 'production' },
-    store: new RedisStore({ client: redis })
+    store: new RedisSessionStore(redis, `${config.get('app').prefix}sess:`)
   })
 
   await server.register(fastifyAwilixPlugin)
