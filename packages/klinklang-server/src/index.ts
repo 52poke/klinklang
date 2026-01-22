@@ -20,11 +20,12 @@ const launch = async (): Promise<void> => {
   await register()
   const { config, discordClient, prisma, notification, logger, worker, redis } = diContainer.cradle
   try {
-    if (config.get('discord').token !== '') {
-      await discordClient.login(config.get('discord').token)
+    const discordToken = config.get('discord').token
+    if (discordToken.length > 0) {
+      await discordClient.login(discordToken)
     }
   } catch (e) {
-    logger.error('discord login failed', e)
+    logger.error({ err: e }, 'discord login failed')
     throw e as Error
   }
 
@@ -37,7 +38,8 @@ const launch = async (): Promise<void> => {
 
   const { host, port, devPort } = config.get('app')
   const workspaceRoot = await findWorkspaceDir(process.cwd())
-  const buildPath = join(workspaceRoot !== undefined ? `${workspaceRoot}/packages/klinklang-client` : '.', 'build')
+  const buildRoot = workspaceRoot === undefined ? '.' : `${workspaceRoot}/packages/klinklang-client`
+  const buildPath = join(buildRoot, 'build')
   const server = fastify({ loggerInstance: logger, trustProxy: true })
 
   await server.register(fastifyCookie)
@@ -70,10 +72,10 @@ const launch = async (): Promise<void> => {
 }
 
 process.on('unhandledRejection', (err) => {
-  console.log(err)
+  process.stderr.write(`${err instanceof Error ? err.message : String(err)}\n`)
   process.exit(1)
 })
 
 launch().catch((e: unknown) => {
-  console.log(e)
+  process.stderr.write(`${e instanceof Error ? e.message : String(e)}\n`)
 })

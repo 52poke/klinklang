@@ -32,7 +32,7 @@ export const Settings: React.FC = () => {
       }
     })
     if (response.status !== 200) {
-      console.log(await response.text())
+      await response.text()
       return
     }
     const { redirectURL } = await response.json() as { redirectURL: string }
@@ -44,7 +44,7 @@ export const Settings: React.FC = () => {
       method: 'DELETE'
     })
     if (response.status >= 300 || response.status < 200) {
-      console.log(await response.text())
+      await response.text()
       return
     }
     await fetchCurrentUser()
@@ -67,7 +67,7 @@ export const Settings: React.FC = () => {
                         <IconButton
                           edge='end'
                           onClick={() => {
-                            deleteFediAccount(account.id).catch(console.log)
+                            deleteFediAccount(account.id).catch(() => undefined)
                           }}
                         >
                           <Delete />
@@ -91,7 +91,7 @@ export const Settings: React.FC = () => {
                 <Button
                   variant='contained'
                   onClick={() => {
-                    fediConnect().catch(console.log)
+                    fediConnect().catch(() => undefined)
                   }}
                 >
                   Connect

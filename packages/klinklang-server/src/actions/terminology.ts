@@ -28,9 +28,9 @@ export class ParseTerminologyWorker extends ActionWorker<ParseTerminologyListAct
     const hasVariants = variants !== undefined && Object.keys(variants).length > 0
 
     $(this.input.entrySelector).each((index, line) => {
-      const textId = this.input.idSelector !== undefined
-        ? parseInt($(line).find(this.input.idSelector).text().trim(), 10)
-        : index + 1
+      const textId = this.input.idSelector === undefined
+        ? index + 1
+        : parseInt($(line).find(this.input.idSelector).text().trim(), 10)
       if (isNaN(textId)) {
         return
       }
@@ -58,9 +58,9 @@ export class ParseTerminologyWorker extends ActionWorker<ParseTerminologyListAct
         const $ = load(variants[variant as 'zh-hant' | 'zh-hans'] ?? this.input.text)
 
         $(this.input.entrySelector).each((index, line) => {
-          const textId = this.input.idSelector !== undefined
-            ? parseInt($(line).find(this.input.idSelector).text().trim(), 10)
-            : index + 1
+          const textId = this.input.idSelector === undefined
+            ? index + 1
+            : parseInt($(line).find(this.input.idSelector).text().trim(), 10)
           if (isNaN(textId)) {
             return
           }

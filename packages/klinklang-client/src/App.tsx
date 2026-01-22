@@ -11,7 +11,7 @@ export const App: React.FC = () => {
 
   const { fetchCurrentUser } = useUserStore()
   useEffect(() => {
-    fetchCurrentUser().catch(console.log)
+    fetchCurrentUser().catch(() => undefined)
   }, [fetchCurrentUser])
 
   return (

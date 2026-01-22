@@ -1,10 +1,10 @@
 import type { Prisma, PrismaClient } from '@mudkipme/klinklang-prisma'
 import { findWorkspaceDir } from '@pnpm/find-workspace-dir'
 import yaml from 'js-yaml'
-import { randomUUID } from 'node:crypto'
 import { readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Config } from '../lib/config.ts'
+import type { StateMachineDefinition } from '../models/asl.ts'
 import type { WorkflowTrigger } from '../models/workflow-type.ts'
 
 export interface WorkflowConfig {
@@ -13,39 +13,30 @@ export interface WorkflowConfig {
   enabled: boolean
   user?: string
   triggers: WorkflowTrigger[]
-  actions: Array<Omit<Prisma.ActionCreateInput, 'isHead'>>
+  definition: StateMachineDefinition
 }
 
 export async function setupWorkflow (prisma: PrismaClient, workflowConfig: WorkflowConfig): Promise<void> {
   let workflow = await prisma.workflow.findFirst({ where: { name: workflowConfig.name } })
 
+  const definition = workflowConfig.definition
+
   if (workflow === null) {
-    const actions: Prisma.ActionCreateInput[] = []
-
-    for (const [index, actionConfig] of workflowConfig.actions.entries()) {
-      actions.push({
-        ...actionConfig,
-        isHead: index === 0,
-        id: randomUUID()
-      })
-      if (index > 0) {
-        actions[index - 1].nextAction = {
-          connect: { id: actions[index].id }
-        }
-      }
-    }
-
     workflow = await prisma.workflow.create({
       data: {
         name: workflowConfig.name,
         isPrivate: workflowConfig.isPrivate,
         enabled: workflowConfig.enabled,
         triggers: workflowConfig.triggers as Prisma.InputJsonValue,
-        actions: {
-          create: actions
-        }
-      },
-      include: { actions: true }
+        definition: definition as Prisma.InputJsonValue
+      }
+    })
+  } else {
+    workflow = await prisma.workflow.update({
+      where: { id: workflow.id },
+      data: {
+        definition: definition as Prisma.InputJsonValue
+      }
     })
   }
 
@@ -73,10 +64,10 @@ export default async function bootstrap ({ config, prisma }: { config: Config; p
 
     const content = await readFile(filename, { encoding: 'utf-8' })
     const workflows = yaml.loadAll(content) as WorkflowConfig[]
-    for (const workflowConfig of workflows) {
+    await Promise.all(workflows.map(async workflowConfig => {
       await setupWorkflow(prisma, workflowConfig)
-    }
+    }))
   } catch (e) {
-    console.log(e)
+    process.stderr.write(`${e instanceof Error ? e.message : String(e)}\n`)
   }
 }

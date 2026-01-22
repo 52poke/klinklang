@@ -6,6 +6,7 @@ import type { Token } from 'oauth-1.0a'
 const oauthRoutes: FastifyPluginCallback = (fastify) => {
   fastify.get('/oauth/login', async (request, reply) => {
     const { url, token } = await fastify.diContainer.cradle.mediaWikiOAuth.getRedirectURL()
+    // eslint-disable-next-line no-param-reassign -- fastify session mutation
     request.session.loginToken = token
     await reply.redirect(url)
   })
@@ -20,6 +21,7 @@ const oauthRoutes: FastifyPluginCallback = (fastify) => {
       }
 
       const token = await mediaWikiOAuth.verify(verifier, request.session.loginToken as Token)
+      // eslint-disable-next-line no-param-reassign -- fastify session mutation
       delete request.session.loginToken
 
       const identity = await mediaWikiOAuth.getIdentity(token)
@@ -44,6 +46,7 @@ const oauthRoutes: FastifyPluginCallback = (fastify) => {
         })
       }
 
+      // eslint-disable-next-line no-param-reassign, require-atomic-updates -- fastify session mutation
       request.session.userId = user.id
       await reply.redirect('/')
     }

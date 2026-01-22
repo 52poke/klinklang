@@ -1,25 +1,9 @@
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 generator client {
   provider = "prisma-client-js"
-}
-
-model Action {
-  id            String   @id @default(uuid()) @db.Uuid
-  actionType    String
-  inputBuilder  Json     @db.JsonB
-  isHead        Boolean
-  outputContext String?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-  nextActionId  String?  @unique @db.Uuid
-  nextAction    Action?  @relation("NextAction", fields: [nextActionId], references: [id])
-  prevAction    Action?  @relation("NextAction")
-  workflowId    String   @db.Uuid
-  workflow      Workflow @relation(fields: [workflowId], references: [id])
 }
 
 model Terminology {
@@ -45,16 +29,16 @@ model User {
 }
 
 model Workflow {
-  id        String   @id @default(uuid()) @db.Uuid
-  name      String
-  isPrivate Boolean
-  enabled   Boolean
-  triggers  Json     @db.JsonB
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  userId    String?  @db.Uuid
-  user      User?    @relation(fields: [userId], references: [id])
-  actions   Action[]
+  id         String   @id @default(uuid()) @db.Uuid
+  name       String
+  isPrivate  Boolean
+  enabled    Boolean
+  triggers   Json     @db.JsonB
+  definition Json     @db.JsonB
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  userId     String?  @db.Uuid
+  user       User?    @relation(fields: [userId], references: [id])
 }
 
 model FediInstance {

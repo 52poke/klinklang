@@ -66,13 +66,21 @@ export const KlinklangHeader: React.FC<KlinklangHeaderProps> = ({ onDrawerOpen }
               vertical: 'top',
               horizontal: 'right'
             }}
-            open={anchorEl !== null}
+            open={Boolean(anchorEl)}
             onClose={() => {
               setAnchorEl(null)
             }}
           >
-            {currentUser !== null
-              ? [
+            {currentUser === null
+              ? (
+                <MenuItem onClick={login}>
+                  <ListItemIcon>
+                    <LoginIcon />
+                  </ListItemIcon>
+                  <ListItemText>Login</ListItemText>
+                </MenuItem>
+              )
+              : [
                 <MenuItem
                   onClick={() => {
                     void navigate('/pages/settings')
@@ -88,7 +96,7 @@ export const KlinklangHeader: React.FC<KlinklangHeaderProps> = ({ onDrawerOpen }
                 <Divider key='divider' />,
                 <MenuItem
                   onClick={() => {
-                    logout().catch(console.log)
+                    logout().catch(() => undefined)
                   }}
                   key='logout'
                 >
@@ -98,14 +106,7 @@ export const KlinklangHeader: React.FC<KlinklangHeaderProps> = ({ onDrawerOpen }
                   <ListItemText>Logout</ListItemText>
                 </MenuItem>
               ]
-              : (
-                <MenuItem onClick={login}>
-                  <ListItemIcon>
-                    <LoginIcon />
-                  </ListItemIcon>
-                  <ListItemText>Login</ListItemText>
-                </MenuItem>
-              )}
+            }
           </Menu>
         </div>
       </Toolbar>

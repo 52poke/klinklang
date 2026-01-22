@@ -1,6 +1,6 @@
 import { findWorkspaceDir } from '@pnpm/find-workspace-dir'
 import convict from 'convict'
-import { join } from 'path'
+import { join } from 'node:path'
 
 const config = convict({
   app: {

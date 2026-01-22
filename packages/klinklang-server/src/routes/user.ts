@@ -5,7 +5,7 @@ import { outputUser } from '../models/user.ts'
 const userRoutes: FastifyPluginCallback = (fastify) => {
   fastify.get('/api/user/me', { preHandler: userMiddleware(false) }, async (request, reply) => {
     await reply.send({
-      user: request.user != null ? outputUser(request.user) : null
+      user: request.user === null ? null : outputUser(request.user)
     })
   })
 

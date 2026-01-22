@@ -40,16 +40,16 @@ export const TermReplacer: React.FC = () => {
   const [result, setResult] = useState('')
   const toggleCategory = useCallback((category: string, checked: boolean): void => {
     setSelectedCategories(current => {
-      if (!checked) {
-        current.delete(category)
-      } else {
+      if (checked) {
         current.add(category)
+      } else {
+        current.delete(category)
       }
       return new Set(current)
     })
   }, [])
   const toggleAllChecked = useCallback((checked: boolean) => {
-    setSelectedCategories(!checked ? new Set() : new Set(categories.map(category => category.value)))
+    setSelectedCategories(checked ? new Set(categories.map(category => category.value)) : new Set())
   }, [])
 
   const replace = useCallback(() => {
@@ -72,7 +72,7 @@ export const TermReplacer: React.FC = () => {
       const { text } = await response.json() as { text: string }
       setResult(text)
     }
-    load().catch(console.log)
+    load().catch(() => undefined)
   }, [sourceLng, targetLng, selectedCategories])
 
   return (

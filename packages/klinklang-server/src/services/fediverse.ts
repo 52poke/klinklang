@@ -5,10 +5,8 @@ import type { Config } from '../lib/config.ts'
 import type { PrismaClient } from '../lib/database.ts'
 
 function urlToDomain (url: string): string {
-  if (!url.includes('://')) {
-    url = 'https://' + url
-  }
-  return new URL(url).hostname
+  const normalized = url.includes('://') ? url : `https://${url}`
+  return new URL(normalized).hostname
 }
 
 export class FediverseService {
@@ -23,7 +21,7 @@ export class FediverseService {
   }
 
   #redirectURI (domain: string): string {
-    return this.#config.get('app.url') + '/fedi/callback/' + domain
+    return `${this.#config.get('app.url')}/fedi/callback/${domain}`
   }
 
   redirectURL (instance: FediInstance): string {
@@ -35,7 +33,7 @@ export class FediverseService {
   async createApp (url: string): Promise<FediInstance> {
     const domain = urlToDomain(url)
     const client = createRestAPIClient({
-      url: 'https://' + domain
+      url: `https://${domain}`
     })
     const redirectUri = this.#redirectURI(domain)
 
@@ -44,7 +42,7 @@ export class FediverseService {
       // Some Mastodon-compatible apps (GoToSocial) don't support `/api/v1/apps/verify_creditionals`
       //
       // const oauthClient = createOAuthAPIClient({
-      //   url: 'https://' + domain
+      //   url: `https://${domain}`
       // })
       // const token = await oauthClient.token.create({
       //   clientId: fediInstance.clientID,
@@ -54,7 +52,7 @@ export class FediverseService {
       // })
 
       // const appClient = createRestAPIClient({
-      //   url: 'https://' + domain,
+      //   url: `https://${domain}`,
       //   accessToken: token.accessToken
       // })
       // await appClient.v1.apps.verifyCredentials()
@@ -92,7 +90,7 @@ export class FediverseService {
     }
 
     const oauthClient = createOAuthAPIClient({
-      url: 'https://' + domain
+      url: `https://${domain}`
     })
     const token = await oauthClient.token.create({
       clientId: fediInstance.clientID,
@@ -104,11 +102,11 @@ export class FediverseService {
     })
 
     const client = createRestAPIClient({
-      url: 'https://' + domain,
+      url: `https://${domain}`,
       accessToken: token.accessToken
     })
     const account = await client.v1.accounts.verifyCredentials()
-    const subject = '@' + account.username + '@' + domain
+    const subject = `@${account.username}@${domain}`
 
     return await this.#prisma.fediAccount.upsert({
       where: { subject, userId },
@@ -134,7 +132,7 @@ export class FediverseService {
     }
 
     try {
-      await fetch('https://' + fediAccount.fediInstance.domain + '/oauth/revoke', {
+      await fetch(`https://${fediAccount.fediInstance.domain}/oauth/revoke`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -164,7 +162,7 @@ export class FediverseService {
     }
 
     return createRestAPIClient({
-      url: 'https://' + fediAccount.fediInstance.domain,
+      url: `https://${fediAccount.fediInstance.domain}`,
       accessToken: fediAccount.accessToken
     })
   }

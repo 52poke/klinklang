@@ -1,7 +1,7 @@
 import type { FastifyPluginCallback, FastifyRequest } from 'fastify'
 import { forbiddenError, workflowNotFoundError } from '../lib/errors.ts'
 import userMiddleware from '../middlewares/user.ts'
-import { createInstanceWithWorkflow, getLinkedActionsOfWorkflow, getWorkflowInstances } from '../models/workflow.ts'
+import { createInstanceWithWorkflow, getLinkedStatesOfWorkflow, getWorkflowInstances } from '../models/workflow.ts'
 
 const workflowRoutes: FastifyPluginCallback = (fastify) => {
   const { prisma } = fastify.diContainer.cradle
@@ -11,8 +11,8 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
     url: '/api/workflow',
     preHandler: userMiddleware(true),
     handler: async (request: FastifyRequest<{ Querystring: { offset?: string; limit?: string } }>, reply) => {
-      const offset = request.query.offset !== undefined ? parseInt(request.query.offset, 10) : 0
-      const limit = request.query.limit !== undefined ? Math.max(parseInt(request.query.limit, 10), 200) : 20
+      const offset = request.query.offset === undefined ? 0 : parseInt(request.query.offset, 10)
+      const limit = request.query.limit === undefined ? 20 : Math.max(parseInt(request.query.limit, 10), 200)
       const workflows = await prisma.workflow.findMany({ skip: offset, take: limit })
       await reply.send({
         workflows
@@ -31,7 +31,7 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
       if (workflow === null) {
         throw workflowNotFoundError()
       }
-      const actions = await getLinkedActionsOfWorkflow(workflow)
+      const actions = getLinkedStatesOfWorkflow(workflow)
       return {
         actions
       }
@@ -49,8 +49,8 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
       if (workflow === null) {
         throw workflowNotFoundError()
       }
-      const start = request.query.start !== undefined ? parseInt(request.query.start, 10) : 0
-      const stop = request.query.stop !== undefined ? Math.max(parseInt(request.query.stop, 10), 200) : 20
+      const start = request.query.start === undefined ? 0 : parseInt(request.query.start, 10)
+      const stop = request.query.stop === undefined ? 20 : Math.max(parseInt(request.query.stop, 10), 200)
       const instances = await getWorkflowInstances(workflow, start, stop)
       return {
         instances
@@ -73,9 +73,10 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
 
       if (workflow.isPrivate) {
         const workflowOwner = workflow.user
-        if (workflowOwner !== null && workflowOwner.id !== request.user?.id) {
-          throw forbiddenError()
+        if (workflowOwner === null || workflowOwner.id === request.user?.id) {
+          return { workflow, instance: await createInstanceWithWorkflow(workflow) }
         }
+        throw forbiddenError()
       }
 
       const instance = await createInstanceWithWorkflow(workflow)

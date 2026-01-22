@@ -1,4 +1,4 @@
-import crypto from 'crypto'
+import crypto from 'node:crypto'
 import jwt from 'jsonwebtoken'
 import OAuth from 'oauth-1.0a'
 import type { Config } from './config.ts'
@@ -38,11 +38,12 @@ export class MediaWikiOAuth {
       hash_function: (baseString, key) => crypto.createHmac('sha1', key).update(baseString).digest('base64')
     })
 
-    this.#requestTokenURL = config.get('mediawiki').scriptPath + 'index.php?title=Special:OAuth/initiate'
-    this.#accessTokenURL = config.get('mediawiki').scriptPath + 'index.php?title=Special:OAuth/token'
-    this.#userAuthorizationURL = config.get('mediawiki').scriptPath + 'index.php?title=Special:OAuth/authorize'
+    const scriptPath = config.get('mediawiki').scriptPath
+    this.#requestTokenURL = `${scriptPath}index.php?title=Special:OAuth/initiate`
+    this.#accessTokenURL = `${scriptPath}index.php?title=Special:OAuth/token`
+    this.#userAuthorizationURL = `${scriptPath}index.php?title=Special:OAuth/authorize`
     this.#callbackURL = config.get('mediawiki').oauthCallback
-    this.#identifyURL = config.get('mediawiki').scriptPath + 'index.php?title=Special:OAuth/identify'
+    this.#identifyURL = `${scriptPath}index.php?title=Special:OAuth/identify`
   }
 
   async fetch (
@@ -50,12 +51,12 @@ export class MediaWikiOAuth {
     { body, method = 'GET', token }: { body?: BodyInit; method?: string; token?: OAuth.Token } = {}
   ): Promise<Response> {
     const headers = this.oauth.toHeader(this.oauth.authorize({
-      url: url.toString(),
+      url,
       data: body,
       method
     }, token))
 
-    const response = await fetch(url.toString(), {
+    const response = await fetch(url, {
       headers: { ...headers }
     })
 
