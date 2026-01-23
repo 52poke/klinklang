@@ -1,7 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { Button } from '../../components/ui/button'
-import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
-import { Separator } from '../../components/ui/separator'
+import { Link } from 'react-router'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -13,7 +11,9 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger
 } from '../../components/ui/alert-dialog'
-import { Link } from 'react-router'
+import { Button } from '../../components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
+import { Separator } from '../../components/ui/separator'
 import { useUserStore } from '../../store/user'
 
 interface Workflow {
@@ -44,6 +44,13 @@ export const Workflows: React.FC = () => {
   const [lastTriggerResult, setLastTriggerResult] = useState<Record<string, string>>({})
 
   const canTrigger = useMemo(() => currentUser !== null && currentUser !== undefined, [currentUser])
+  const hasManualTrigger = useCallback((workflow: Workflow): boolean => {
+    return (workflow.triggers ?? []).some((trigger) =>
+      typeof trigger === 'object' &&
+      trigger !== null &&
+      (trigger as { type?: string }).type === 'TRIGGER_MANUAL'
+    )
+  }, [])
 
   const fetchWorkflows = useCallback(async () => {
     setLoading(true)
@@ -141,43 +148,43 @@ export const Workflows: React.FC = () => {
                 <Button asChild variant='outline'>
                   <Link to={`/pages/workflows/${workflow.id}`}>View</Link>
                 </Button>
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button disabled={!canTrigger || triggering[workflow.id] === true}>
-                      {triggering[workflow.id] === true ? 'Triggering…' : 'Trigger'}
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Trigger workflow</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        This will start a new instance of &quot;{workflow.name}&quot;. Continue?
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => {
-                          triggerWorkflow(workflow.id).catch(() => undefined)
-                        }}
-                      >
-                        Trigger
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
+                {hasManualTrigger(workflow) && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button disabled={!canTrigger || triggering[workflow.id]}>
+                        {triggering[workflow.id] ? 'Triggering…' : 'Trigger'}
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Trigger workflow</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          This will start a new instance of &quot;{workflow.name}&quot;. Continue?
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => {
+                            triggerWorkflow(workflow.id).catch(() => undefined)
+                          }}
+                        >
+                          Trigger
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
               </div>
             </CardHeader>
             <CardContent className='space-y-3 text-sm'>
               <Separator />
               <div className='flex flex-wrap gap-x-6 gap-y-2 text-muted-foreground'>
                 <div>
-                  <span className='font-medium text-foreground'>Created:</span>{' '}
-                  {formatDateTime(workflow.createdAt)}
+                  <span className='font-medium text-foreground'>Created:</span> {formatDateTime(workflow.createdAt)}
                 </div>
                 <div>
-                  <span className='font-medium text-foreground'>Updated:</span>{' '}
-                  {formatDateTime(workflow.updatedAt)}
+                  <span className='font-medium text-foreground'>Updated:</span> {formatDateTime(workflow.updatedAt)}
                 </div>
                 {workflow.userId && (
                   <div>

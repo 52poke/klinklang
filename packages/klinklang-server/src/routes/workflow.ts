@@ -2,6 +2,7 @@ import type { FastifyPluginCallback, FastifyRequest } from 'fastify'
 import { forbiddenError, workflowNotFoundError } from '../lib/errors.ts'
 import userMiddleware from '../middlewares/user.ts'
 import { createInstanceWithWorkflow, getLinkedStatesOfWorkflow, getWorkflowInstances } from '../models/workflow.ts'
+import type { WorkflowTrigger } from '../models/workflow-type.ts'
 
 const workflowRoutes: FastifyPluginCallback = (fastify) => {
   const { prisma } = fastify.diContainer.cradle
@@ -85,6 +86,12 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
         if (workflowOwner === null || workflowOwner.id === request.user?.id) {
           return { workflow, instance: await createInstanceWithWorkflow(workflow) }
         }
+        throw forbiddenError()
+      }
+
+      const supportsManualTrigger = (workflow.triggers as WorkflowTrigger[])
+        .some(trigger => trigger.type === 'TRIGGER_MANUAL')
+      if (!supportsManualTrigger) {
         throw forbiddenError()
       }
 

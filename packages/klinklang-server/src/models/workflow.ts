@@ -1,7 +1,7 @@
 import type { Workflow } from '@mudkipme/klinklang-prisma'
-import WorkflowInstance from './workflow-instance.ts'
 import type { StateMachineDefinition } from './asl.ts'
 import { getNextStateName, getTaskState } from './asl.ts'
+import WorkflowInstance from './workflow-instance.ts'
 import type { WorkflowTrigger } from './workflow-type.ts'
 
 export async function getWorkflowInstances (workflow: Workflow, start = 0, stop = 100): Promise<WorkflowInstance[]> {
@@ -23,7 +23,7 @@ export async function createInstanceWithWorkflow (
 export function getLinkedStatesOfWorkflow (
   workflow: Workflow
 ): Array<{ name: string; state: Record<string, unknown> }> {
-  const definition = workflow.definition as StateMachineDefinition
+  const definition = workflow.definition as unknown as StateMachineDefinition
   const currentState = getTaskState(definition, definition.StartAt)
   const linkedStates: Array<{ name: string; state: Record<string, unknown> }> = []
   const visited = new Set<string>()
@@ -34,7 +34,7 @@ export function getLinkedStatesOfWorkflow (
       throw new Error('CIRCULAR_STATE_FOUND')
     }
     visited.add(currentName)
-    linkedStates.push({ name: currentName, state: current as Record<string, unknown> })
+    linkedStates.push({ name: currentName, state: current as unknown as Record<string, unknown> })
     const nextName = getNextStateName(current)
     if (nextName === null) {
       break

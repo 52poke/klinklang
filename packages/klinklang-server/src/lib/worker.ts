@@ -2,6 +2,7 @@ import { type Job, Worker } from 'bullmq'
 import type { Logger } from 'pino'
 import type { ActionJobData, ActionJobResult, Actions } from '../actions/interfaces.ts'
 import { processAction } from '../actions/register.ts'
+import WorkflowInstance from '../models/workflow-instance.ts'
 import type { Config } from './config.ts'
 
 const queueName = 'klinklang-queue'
@@ -20,6 +21,17 @@ export const getWorker = ({ config, logger }: { config: Config; logger: Logger }
 
   worker.on('failed', (job, err) => {
     logger.error(`job ${job?.id ?? ''} failed: ${err.message}`)
+    if (job?.data !== undefined) {
+      void WorkflowInstance.getInstance(job.data.workflowId, job.data.instanceId)
+        .then(async (instance) => {
+          if (instance !== null) {
+            await instance.fail()
+          }
+        })
+        .catch((error: unknown) => {
+          logger.error({ err: error }, 'failed to mark workflow instance as failed')
+        })
+    }
   })
   return worker
 }

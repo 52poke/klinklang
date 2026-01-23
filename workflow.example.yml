@@ -8,6 +8,7 @@ triggers:
     op: test
     path: /page_title
     value: 特性列表
+- type: TRIGGER_MANUAL
 definition:
   StartAt: GET_HTML_1
   States:
@@ -54,6 +55,7 @@ triggers:
     op: test
     path: /page_title
     value: 宝可梦列表（按全国图鉴编号）/简单版
+- type: TRIGGER_MANUAL
 definition:
   StartAt: GET_HTML_1
   States:
@@ -100,6 +102,7 @@ triggers:
     op: test
     path: /page_title
     value: 神奇宝贝百科:层叠样式表
+- type: TRIGGER_MANUAL
 definition:
   StartAt: GET_TEXT_1
   States:
@@ -163,6 +166,7 @@ triggers:
     op: test
     path: /page_title
     value: 招式列表
+- type: TRIGGER_MANUAL
 definition:
   StartAt: GET_HTML_1
   States:
@@ -208,6 +212,7 @@ triggers:
     op: test
     path: /page_title
     value: 道具列表
+- type: TRIGGER_MANUAL
 definition:
   StartAt: GET_HTML_1
   States:
@@ -253,6 +258,7 @@ triggers:
     op: test
     path: /page_title
     value: 地点列表
+- type: TRIGGER_MANUAL
 definition:
   StartAt: GET_HTML_1
   States:
@@ -298,6 +304,7 @@ triggers:
     op: test
     path: /page_title
     value: 性格
+- type: TRIGGER_MANUAL
 definition:
   StartAt: GET_HTML_1
   States:
@@ -343,6 +350,7 @@ triggers:
     op: test
     path: /page_title
     value: 训练家类型
+- type: TRIGGER_MANUAL
 definition:
   StartAt: GET_HTML_1
   States:
@@ -388,6 +396,7 @@ triggers:
     op: test
     path: /page_title
     value: 武将
+- type: TRIGGER_MANUAL
 definition:
   StartAt: GET_HTML_1
   States:
@@ -433,6 +442,7 @@ triggers:
     op: test
     path: /page_title
     value: 人物列表
+- type: TRIGGER_MANUAL
 definition:
   StartAt: GET_HTML_1
   States:
