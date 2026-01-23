@@ -51,7 +51,7 @@
     "jsonpath-plus": "^10.3.0",
     "jsonwebtoken": "^9.0.3",
     "kafkajs": "^2.2.4",
-    "lodash-es": "^4.17.22",
+    "lodash-es": "^4.17.23",
     "masto": "^7.10.1",
     "oauth-1.0a": "^2.2.6",
     "pg": "^8.16.3",
