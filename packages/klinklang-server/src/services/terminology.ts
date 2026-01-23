@@ -9,6 +9,11 @@ export interface TerminologyReplaceInput {
   text: string
 }
 
+export interface TerminologyPair {
+  source: string
+  result: string
+}
+
 export class TerminologyService {
   #terminologyDataCache: Terminology[] | undefined
   readonly #prisma: PrismaClient
@@ -40,27 +45,7 @@ export class TerminologyService {
   }
 
   async replace (input: TerminologyReplaceInput): Promise<string> {
-    if (this.#terminologyDataCache === undefined) {
-      await this.updateTerminologyCache()
-    }
-    const terms = (this.#terminologyDataCache ?? []).filter(term =>
-      input.categories.includes(term.category)
-      && (term.lang === input.sourceLng || term.lang === input.resultLng)
-    )
-
-    const texts = new Map<string, { source: string; result: string }>()
-    for (const term of terms) {
-      const key = `${term.category}:${term.textId}`
-      const item = texts.get(key) ?? { source: '', result: '' }
-      if (term.lang === input.sourceLng) {
-        item.source = term.text
-      } else {
-        item.result = term.text
-      }
-      texts.set(key, item)
-    }
-
-    const sorted = Array.from(texts.values()).sort((lhs, rhs) => rhs.source.length - lhs.source.length)
+    const sorted = await this.getTerminologyPairs(input.sourceLng, input.resultLng, input.categories)
     let result = input.text
     for (const item of sorted) {
       if (item.source === '' || item.result === '') {
@@ -69,5 +54,44 @@ export class TerminologyService {
       result = result.split(item.source).join(item.result)
     }
     return result
+  }
+
+  async getTerminologyPairs (
+    sourceLng: string,
+    resultLng: string,
+    categories?: string[]
+  ): Promise<TerminologyPair[]> {
+    if (this.#terminologyDataCache === undefined) {
+      await this.updateTerminologyCache()
+    }
+    const terms = (this.#terminologyDataCache ?? []).filter(term =>
+      (categories === undefined || categories.includes(term.category))
+      && (term.lang === sourceLng || term.lang === resultLng)
+    )
+
+    const texts = new Map<string, { source: string; result: string }>()
+    for (const term of terms) {
+      const key = `${term.category}:${term.textId}`
+      const item = texts.get(key) ?? { source: '', result: '' }
+      if (term.lang === sourceLng) {
+        item.source = term.text
+      } else {
+        item.result = term.text
+      }
+      texts.set(key, item)
+    }
+
+    return Array.from(texts.values()).sort((lhs, rhs) => rhs.source.length - lhs.source.length)
+  }
+
+  async getTerminologyPairsForText (
+    sourceLng: string,
+    resultLng: string,
+    text: string,
+    categories?: string[]
+  ): Promise<TerminologyPair[]> {
+    const all = await this.getTerminologyPairs(sourceLng, resultLng, categories)
+    const matched = all.filter(item => item.source !== '' && text.includes(item.source))
+    return matched.sort((lhs, rhs) => rhs.source.length - lhs.source.length)
   }
 }

@@ -13,6 +13,7 @@ import { RedisSessionStore } from './lib/session-store.ts'
 import { fediRoutes } from './routes/fedi.ts'
 import oauth from './routes/oauth.ts'
 import terminologyRoutes from './routes/terminology.ts'
+import translateRoutes from './routes/translate.ts'
 import userRoutes from './routes/user.ts'
 import workflowRoutes from './routes/workflow.ts'
 
@@ -56,6 +57,7 @@ const launch = async (): Promise<void> => {
   await server.register(userRoutes)
   await server.register(workflowRoutes)
   await server.register(terminologyRoutes)
+  await server.register(translateRoutes)
   await server.register(fediRoutes)
 
   await server.register(fastifyStatic, {

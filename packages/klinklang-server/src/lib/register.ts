@@ -2,6 +2,7 @@ import { diContainer } from '@fastify/awilix'
 import { asClass, asFunction, asValue } from 'awilix'
 import { FediverseService } from '../services/fediverse.ts'
 import { TerminologyService } from '../services/terminology.ts'
+import { TranslationService } from '../services/translation.ts'
 import { WikiService } from '../services/wiki.ts'
 import { loadConfig } from './config.ts'
 import { getClient as getDatabaseClient } from './database.ts'
@@ -25,6 +26,7 @@ export async function register (): Promise<void> {
     terminologyService: asClass(TerminologyService).singleton().disposer(service => {
       service.dispose()
     }),
+    translationService: asClass(TranslationService).singleton(),
     discordClient: asFunction(getDiscordClient).singleton(),
     worker: asFunction(getWorker).singleton(),
     queue: asFunction(getQueue).singleton(),

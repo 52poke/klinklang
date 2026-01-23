@@ -8,6 +8,10 @@ const menus = [
     link: '/pages/replace'
   },
   {
+    title: 'Translate',
+    link: '/pages/translate'
+  },
+  {
     title: 'Workflows',
     link: '/pages/workflows'
   }
