@@ -11,6 +11,7 @@ interface StateCardProps {
   state: StateDefinition
   variant?: 'main' | 'branch'
   isStart?: boolean
+  isEnd?: boolean
   stepLabel?: string
 }
 
@@ -19,19 +20,22 @@ export const StateCard: React.FC<StateCardProps> = ({
   state,
   variant = 'main',
   isStart = false,
+  isEnd = false,
   stepLabel
 }) => {
   const rows = getParameterRows(state)
   const keyColumnWidth = variant === 'branch' ? 140 : 160
 
   return (
-    <Card className={variant === 'branch' ? 'shadow-none' : 'relative'}>
+    <Card className={variant === 'branch' ? 'shadow-none' : 'relative z-10'}>
       <CardHeader className='flex flex-row items-start gap-4'>
         {variant === 'main' && (
           <div
             className={[
               'hidden h-10 w-10 items-center justify-center rounded-full border text-sm font-semibold shadow-sm lg:flex',
-              isStart ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-background'
+              isStart ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : '',
+              isEnd ? 'bg-rose-50 text-rose-700 border-rose-200' : '',
+              !isStart && !isEnd ? 'bg-background' : ''
             ].join(' ')}
           >
             {getIconMark(state)}

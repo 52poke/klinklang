@@ -45,6 +45,32 @@ definition:
       ResultPath: $.payload
       End: true
 ---
+name: Sample manual choice workflow
+isPrivate: false
+enabled: true
+triggers:
+- type: TRIGGER_MANUAL
+definition:
+  StartAt: PassSeed
+  States:
+    PassSeed:
+      Type: Pass
+      ResultPath: $
+      Next: Decide
+    Decide:
+      Type: Choice
+      Choices:
+      - Variable: $.payload.value
+        NumericGreaterThan: 1
+        Next: SucceedState
+      Default: FailState
+    SucceedState:
+      Type: Succeed
+    FailState:
+      Type: Fail
+      Error: ValueTooLow
+      Cause: payload.value was not greater than 1
+---
 name: Update Pokémon term list
 isPrivate: false
 enabled: true

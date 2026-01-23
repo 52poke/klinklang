@@ -83,7 +83,7 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
     method: 'POST',
     url: '/api/workflow/:workflowId/trigger',
     preHandler: userMiddleware(true),
-    handler: async (request: FastifyRequest<{ Params: { workflowId: string } }>) => {
+    handler: async (request: FastifyRequest<{ Params: { workflowId: string }; Body?: { payload?: unknown } }>) => {
       const workflow = await prisma.workflow.findUnique({
         where: { id: request.params.workflowId },
         include: { user: true }
@@ -92,21 +92,26 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
         throw workflowNotFoundError()
       }
 
+      const supportsManualTrigger = (workflow.triggers as WorkflowTrigger[])
+        .find(trigger => trigger.type === 'TRIGGER_MANUAL')
+      if (supportsManualTrigger === undefined) {
+        throw forbiddenError()
+      }
+
+      const requesterGroups = request.user?.groups ?? []
+      const canTriggerManually = requesterGroups.includes('sysop') || requesterGroups.includes('bot')
+      if (!canTriggerManually) {
+        throw forbiddenError()
+      }
+
       if (workflow.isPrivate) {
         const workflowOwner = workflow.user
-        if (workflowOwner === null || workflowOwner.id === request.user?.id) {
-          return { workflow, instance: await createInstanceWithWorkflow(workflow) }
+        if (workflowOwner === null || workflowOwner.id !== request.user?.id) {
+          throw forbiddenError()
         }
-        throw forbiddenError()
       }
 
-      const supportsManualTrigger = (workflow.triggers as WorkflowTrigger[])
-        .some(trigger => trigger.type === 'TRIGGER_MANUAL')
-      if (!supportsManualTrigger) {
-        throw forbiddenError()
-      }
-
-      const instance = await createInstanceWithWorkflow(workflow)
+      const instance = await createInstanceWithWorkflow(workflow, supportsManualTrigger, request.body?.payload)
 
       return {
         workflow,

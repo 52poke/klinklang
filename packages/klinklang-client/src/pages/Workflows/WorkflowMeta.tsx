@@ -36,8 +36,7 @@ const formatDateTime = (value: string): string => {
   return date.toLocaleString()
 }
 
-const getTriggerLabel = (trigger: WorkflowTrigger): string =>
-  trigger.type.replace('TRIGGER_', '').replace(/_/guv, ' ')
+const getTriggerLabel = (trigger: WorkflowTrigger): string => trigger.type.replace('TRIGGER_', '').replace(/_/gv, ' ')
 
 const formatTriggerDetails = (trigger: WorkflowTrigger): Array<{ label: string; value: string }> => {
   switch (trigger.type) {
@@ -74,17 +73,23 @@ export const WorkflowMeta: React.FC<{ workflow: WorkflowMetaData }> = ({ workflo
         <div>{workflow.isPrivate ? 'Private' : 'Public'} • {workflow.enabled ? 'Enabled' : 'Disabled'}</div>
       </div>
       <div className='space-y-2'>
-        <div><span className='font-medium text-foreground'>Id:</span> {workflow.id}</div>
-        <div><span className='font-medium text-foreground'>Owner:</span> {workflow.userId ?? '-'}</div>
-        <div><span className='font-medium text-foreground'>Created:</span> {formatDateTime(workflow.createdAt)}</div>
-        <div><span className='font-medium text-foreground'>Updated:</span> {formatDateTime(workflow.updatedAt)}</div>
+        <div>
+          <span className='font-medium text-foreground'>Id:</span> {workflow.id}
+        </div>
+        <div>
+          <span className='font-medium text-foreground'>Owner:</span> {workflow.userId ?? '-'}
+        </div>
+        <div>
+          <span className='font-medium text-foreground'>Created:</span> {formatDateTime(workflow.createdAt)}
+        </div>
+        <div>
+          <span className='font-medium text-foreground'>Updated:</span> {formatDateTime(workflow.updatedAt)}
+        </div>
       </div>
       <div className='space-y-2'>
         <div className='font-medium text-foreground'>Triggers</div>
         {workflow.triggers.length === 0
-          ? (
-            <div>No triggers configured.</div>
-          )
+          ? <div>No triggers configured.</div>
           : (
             <div className='flex flex-col gap-2'>
               {workflow.triggers.map((trigger, index) => (

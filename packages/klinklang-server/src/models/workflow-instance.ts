@@ -168,7 +168,8 @@ class WorkflowInstance {
       if (startState.Type === 'Pass') {
         context = applyPassState(startState, context)
         if (startState.End === true) {
-          throw new Error('ERR_WORKFLOW_START_STATE_NOT_FOUND')
+          startState = { Type: 'Succeed' }
+          break
         }
         startName = startState.Next ?? null
       } else {
@@ -183,8 +184,23 @@ class WorkflowInstance {
       }
       startState = getState(definition, startName)
     }
-    if (startState.Type !== 'Task') {
-      throw new Error('ERR_WORKFLOW_START_STATE_NOT_FOUND')
+    if (startState.Type === 'Succeed' || startState.Type === 'Fail') {
+      const instanceId = randomUUID()
+      const jobId = randomUUID()
+      const data: WorkflowInstanceData = {
+        workflowId: workflow.id,
+        instanceId,
+        firstJobId: jobId,
+        currentStateName: startState.Type === 'Succeed' ? startName : startName,
+        status: startState.Type === 'Succeed' ? 'completed' : 'failed',
+        createdAt: Date.now(),
+        completedAt: Date.now(),
+        trigger,
+        context
+      }
+      const instance = new WorkflowInstance(data)
+      await instance.save()
+      return instance
     }
     const instanceId = randomUUID()
     const jobData: ActionJobData<Actions> = {

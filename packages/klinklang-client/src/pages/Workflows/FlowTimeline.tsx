@@ -12,7 +12,7 @@ export const FlowTimeline: React.FC<FlowTimelineProps> = ({ definition }) => {
 
   return (
     <div className='relative space-y-6'>
-      <div className='absolute left-5 top-4 hidden h-[calc(100%-2rem)] w-px bg-border lg:block' />
+      <div className='absolute left-5 top-4 z-0 hidden h-[calc(100%-2rem)] w-px bg-border lg:block' />
       {flow.map((item, index) => {
         if (item.kind === 'choice') {
           return (
@@ -24,13 +24,16 @@ export const FlowTimeline: React.FC<FlowTimelineProps> = ({ definition }) => {
             />
           )
         }
+        const isStart = index === 0
+        const isEnd = index === flow.length - 1
         return (
           <StateCard
             key={`${item.name}-${index}`}
             name={item.name}
             state={item.state}
-            isStart={index === 0}
-            stepLabel={index === 0 ? 'Start' : `Step ${index + 1}`}
+            isStart={isStart}
+            isEnd={isEnd}
+            stepLabel={isStart ? 'Start' : isEnd ? 'End' : `Step ${index + 1}`}
           />
         )
       })}
