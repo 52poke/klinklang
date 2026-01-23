@@ -1,8 +1,9 @@
 import type { FastifyPluginCallback, FastifyRequest } from 'fastify'
 import { forbiddenError, workflowNotFoundError } from '../lib/errors.ts'
 import userMiddleware from '../middlewares/user.ts'
-import { createInstanceWithWorkflow, getLinkedStatesOfWorkflow, getWorkflowInstances } from '../models/workflow.ts'
+import type { StateMachineDefinition } from '../models/asl.ts'
 import type { WorkflowTrigger } from '../models/workflow-type.ts'
+import { createInstanceWithWorkflow, getWorkflowInstances } from '../models/workflow.ts'
 
 const workflowRoutes: FastifyPluginCallback = (fastify) => {
   const { prisma } = fastify.diContainer.cradle
@@ -41,9 +42,19 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
       if (workflow === null) {
         throw workflowNotFoundError()
       }
-      const actions = getLinkedStatesOfWorkflow(workflow)
+      const definition = workflow.definition as unknown as StateMachineDefinition
       return {
-        actions
+        definition,
+        workflow: {
+          id: workflow.id,
+          name: workflow.name,
+          isPrivate: workflow.isPrivate,
+          enabled: workflow.enabled,
+          triggers: workflow.triggers,
+          createdAt: workflow.createdAt,
+          updatedAt: workflow.updatedAt,
+          userId: workflow.userId
+        }
       }
     }
   })
