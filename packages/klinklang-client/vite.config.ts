@@ -1,7 +1,7 @@
-import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
-import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 import { fileURLToPath, URL } from 'node:url'
+import { defineConfig } from 'vite'
 
 export default defineConfig({
   plugins: [tailwindcss(), react()],
@@ -16,6 +16,7 @@ export default defineConfig({
         target: 'http://localhost:3000'
       }
     },
+    allowedHosts: true,
     host: '0.0.0.0',
     port: 3001
   },
