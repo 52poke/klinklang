@@ -1,6 +1,6 @@
 import type { Workflow } from '@mudkipme/klinklang-prisma'
 import type { StateMachineDefinition } from './asl.ts'
-import { getNextStateName, getTaskState } from './asl.ts'
+import { getState, resolveChoiceNext } from './asl.ts'
 import WorkflowInstance from './workflow-instance.ts'
 import type { WorkflowTrigger } from './workflow-type.ts'
 
@@ -23,8 +23,8 @@ export async function createInstanceWithWorkflow (
 export function getLinkedStatesOfWorkflow (
   workflow: Workflow
 ): Array<{ name: string; state: Record<string, unknown> }> {
-  const definition = workflow.definition as unknown as StateMachineDefinition
-  const currentState = getTaskState(definition, definition.StartAt)
+  const definition = workflow.definition as StateMachineDefinition
+  const currentState = getState(definition, definition.StartAt)
   const linkedStates: Array<{ name: string; state: Record<string, unknown> }> = []
   const visited = new Set<string>()
   let currentName = definition.StartAt
@@ -35,12 +35,14 @@ export function getLinkedStatesOfWorkflow (
     }
     visited.add(currentName)
     linkedStates.push({ name: currentName, state: current as unknown as Record<string, unknown> })
-    const nextName = getNextStateName(current)
+    const nextName = current.Type === 'Task'
+      ? (current.End === true ? null : (current.Next ?? null))
+      : resolveChoiceNext(current, {})
     if (nextName === null) {
       break
     }
     currentName = nextName
-    current = getTaskState(definition, currentName)
+    current = getState(definition, currentName)
   }
   return linkedStates
 }

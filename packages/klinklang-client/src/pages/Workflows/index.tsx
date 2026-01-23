@@ -43,14 +43,14 @@ export const Workflows: React.FC = () => {
   const [triggering, setTriggering] = useState<Record<string, boolean>>({})
   const [lastTriggerResult, setLastTriggerResult] = useState<Record<string, string>>({})
 
-  const canTrigger = useMemo(() => currentUser !== null && currentUser !== undefined, [currentUser])
-  const hasManualTrigger = useCallback((workflow: Workflow): boolean => {
-    return (workflow.triggers ?? []).some((trigger) =>
+  const canTrigger = useMemo(() => currentUser !== null, [currentUser])
+  const hasManualTrigger = useCallback((workflow: Workflow): boolean => (
+    workflow.triggers.some((trigger) =>
       typeof trigger === 'object' &&
       trigger !== null &&
       (trigger as { type?: string }).type === 'TRIGGER_MANUAL'
     )
-  }, [])
+  ), [])
 
   const fetchWorkflows = useCallback(async () => {
     setLoading(true)
@@ -67,7 +67,7 @@ export const Workflows: React.FC = () => {
         return
       }
       const data = await response.json() as { workflows: Workflow[] }
-      setWorkflows(data.workflows ?? [])
+      setWorkflows(data.workflows)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load workflows.')
     } finally {
@@ -111,7 +111,13 @@ export const Workflows: React.FC = () => {
             Manage and trigger workflows. Definitions are hidden on this page.
           </p>
         </div>
-        <Button variant='outline' onClick={fetchWorkflows} disabled={loading}>
+        <Button
+          variant='outline'
+          onClick={() => {
+            void fetchWorkflows()
+          }}
+          disabled={loading}
+        >
           {loading ? 'Refreshing...' : 'Refresh'}
         </Button>
       </div>
@@ -141,7 +147,7 @@ export const Workflows: React.FC = () => {
                   <span>•</span>
                   <span>{workflow.enabled ? 'Enabled' : 'Disabled'}</span>
                   <span>•</span>
-                  <span>{workflow.triggers?.length ?? 0} triggers</span>
+                  <span>{workflow.triggers.length} triggers</span>
                 </div>
               </div>
               <div className='flex flex-col gap-2'>
@@ -186,13 +192,13 @@ export const Workflows: React.FC = () => {
                 <div>
                   <span className='font-medium text-foreground'>Updated:</span> {formatDateTime(workflow.updatedAt)}
                 </div>
-                {workflow.userId && (
+                {workflow.userId !== null && workflow.userId !== undefined && workflow.userId !== '' && (
                   <div>
                     <span className='font-medium text-foreground'>Owner:</span> {workflow.userId}
                   </div>
                 )}
               </div>
-              {lastTriggerResult[workflow.id] && (
+              {lastTriggerResult[workflow.id] !== '' && (
                 <div className='text-xs text-muted-foreground'>
                   {lastTriggerResult[workflow.id]}
                 </div>

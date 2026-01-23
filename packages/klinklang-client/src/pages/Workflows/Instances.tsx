@@ -43,7 +43,7 @@ export const WorkflowInstances: React.FC = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const canView = useMemo(() => currentUser !== null && currentUser !== undefined, [currentUser])
+  const canView = useMemo(() => currentUser !== null, [currentUser])
 
   const fetchInstances = useCallback(async () => {
     if (workflowId === undefined) {
@@ -64,7 +64,7 @@ export const WorkflowInstances: React.FC = () => {
         return
       }
       const data = await response.json() as { instances: WorkflowInstance[] }
-      setInstances(data.instances ?? [])
+      setInstances(data.instances)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load workflow instances.')
     } finally {
@@ -87,7 +87,13 @@ export const WorkflowInstances: React.FC = () => {
           <Button asChild variant='outline'>
             <Link to={`/pages/workflows/${workflowId ?? ''}`}>Back</Link>
           </Button>
-          <Button variant='outline' onClick={fetchInstances} disabled={loading}>
+          <Button
+            variant='outline'
+            onClick={() => {
+              void fetchInstances()
+            }}
+            disabled={loading}
+          >
             {loading ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>

@@ -4,7 +4,7 @@ import type { Job } from 'bullmq'
 import { randomUUID } from 'node:crypto'
 import type { ActionJobData, ActionJobResult, Actions } from '../actions/interfaces.ts'
 import type { StateMachineDefinition } from './asl.ts'
-import { applyStateOutput, buildStateInput, getNextStateName, getTaskState } from './asl.ts'
+import { applyStateOutput, buildStateInput, getState, getTaskState, resolveNextTaskState } from './asl.ts'
 import type { WorkflowTrigger } from './workflow-type.ts'
 
 export interface WorkflowInstanceData {
@@ -105,13 +105,12 @@ class WorkflowInstance {
   ): Promise<Job<ActionJobData<T>, ActionJobResult<T>> | null> {
     const { queue } = diContainer.cradle
     const definition = await this.getDefinition()
-    const state = getTaskState(definition, currentStateName)
-    const nextStateName = getNextStateName(state)
-    if (nextStateName === null) {
+    const nextTask = resolveNextTaskState(definition, currentStateName, this.context)
+    if (nextTask === null) {
       return null
     }
-
-    const nextState = getTaskState(definition, nextStateName)
+    const nextStateName = nextTask.name
+    const nextState = nextTask.state
     const jobData: ActionJobData<T> = {
       actionType: nextState.Resource as T['actionType'],
       input: buildStateInput(nextState, this.context) as T['input'],
@@ -133,26 +132,32 @@ class WorkflowInstance {
     if (definitionValue === null) {
       throw new Error('ERR_WORKFLOW_DEFINITION_NOT_FOUND')
     }
-    const definition = definitionValue as unknown as StateMachineDefinition
-    const startStateName = definition.StartAt
-    const startState = getTaskState(definition, startStateName)
-    const instanceId = randomUUID()
+    const definition = definitionValue as StateMachineDefinition
     const context = { payload }
+    const startStateName = definition.StartAt
+    const startState = getState(definition, startStateName)
+    const startTask = startState.Type === 'Task'
+      ? { name: startStateName, state: startState }
+      : resolveNextTaskState(definition, startStateName, context)
+    if (startTask === null) {
+      throw new Error('ERR_WORKFLOW_START_STATE_NOT_FOUND')
+    }
+    const instanceId = randomUUID()
     const jobData: ActionJobData<Actions> = {
-      actionType: startState.Resource as Actions['actionType'],
-      input: buildStateInput(startState, context) as Actions['input'],
+      actionType: startTask.state.Resource as Actions['actionType'],
+      input: buildStateInput(startTask.state, context) as Actions['input'],
       workflowId: workflow.id,
       instanceId,
-      stateName: startStateName
+      stateName: startTask.name
     }
     const jobId = randomUUID()
-    await diContainer.cradle.queue.add(startState.Resource, jobData, { jobId })
+    await diContainer.cradle.queue.add(startTask.state.Resource, jobData, { jobId })
 
     const data: WorkflowInstanceData = {
       workflowId: workflow.id,
       instanceId,
       firstJobId: jobId,
-      currentStateName: startStateName,
+      currentStateName: startTask.name,
       status: 'pending',
       createdAt: Date.now(),
       trigger,

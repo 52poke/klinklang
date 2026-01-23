@@ -90,7 +90,13 @@ export const WorkflowDetail: React.FC = () => {
           <Button asChild variant='outline'>
             <Link to={`/pages/workflows/${workflowId ?? ''}/instances`}>Instances</Link>
           </Button>
-          <Button variant='outline' onClick={fetchActions} disabled={loading}>
+          <Button
+            variant='outline'
+            onClick={() => {
+              void fetchActions()
+            }}
+            disabled={loading}
+          >
             {loading ? 'Refreshing...' : 'Refresh'}
           </Button>
         </div>
