@@ -23,7 +23,7 @@ export async function createInstanceWithWorkflow (
 export function getLinkedStatesOfWorkflow (
   workflow: Workflow
 ): Array<{ name: string; state: Record<string, unknown> }> {
-  const definition = workflow.definition as StateMachineDefinition
+  const definition = workflow.definition as unknown as StateMachineDefinition
   const currentState = getState(definition, definition.StartAt)
   const linkedStates: Array<{ name: string; state: Record<string, unknown> }> = []
   const visited = new Set<string>()
@@ -37,7 +37,11 @@ export function getLinkedStatesOfWorkflow (
     linkedStates.push({ name: currentName, state: current as unknown as Record<string, unknown> })
     const nextName = current.Type === 'Task'
       ? (current.End === true ? null : (current.Next ?? null))
-      : resolveChoiceNext(current, {})
+      : current.Type === 'Pass'
+        ? (current.End === true ? null : (current.Next ?? null))
+        : current.Type === 'Choice'
+          ? resolveChoiceNext(current, {})
+          : null
     if (nextName === null) {
       break
     }

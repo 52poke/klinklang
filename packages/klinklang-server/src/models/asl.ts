@@ -4,7 +4,7 @@ import { render } from '../lib/template.ts'
 
 export interface StateMachineDefinition {
   StartAt: string
-  States: Record<string, StateDefinition | undefined>
+  States: Record<string, StateDefinition>
 }
 
 export interface TaskState {
@@ -24,7 +24,27 @@ export interface ChoiceState {
   Default?: string
 }
 
-export type StateDefinition = TaskState | ChoiceState
+export interface PassState {
+  Type: 'Pass'
+  Parameters?: unknown
+  InputPath?: string | null
+  ResultPath?: string | null
+  OutputPath?: string | null
+  Next?: string
+  End?: boolean
+}
+
+export interface SucceedState {
+  Type: 'Succeed'
+}
+
+export interface FailState {
+  Type: 'Fail'
+  Error?: string
+  Cause?: string
+}
+
+export type StateDefinition = TaskState | ChoiceState | PassState | SucceedState | FailState
 
 export type ChoiceRule =
   & {
@@ -112,10 +132,15 @@ export type ChoiceRule =
 
 export function getState (definition: StateMachineDefinition, stateName: string): StateDefinition {
   const state = definition.States[stateName]
-  if (state === undefined) {
-    throw new Error('WORKFLOW_STATE_NOT_FOUND')
+  switch (state.Type) {
+    case 'Task':
+    case 'Choice':
+    case 'Pass':
+    case 'Fail':
+    case 'Succeed':
+      return state
   }
-  return state
+  throw new Error('UNSUPPORTED_STATE_TYPE')
 }
 
 export function getTaskState (definition: StateMachineDefinition, stateName: string): TaskState {
@@ -228,9 +253,14 @@ export function resolveNextTaskState (
   context: Record<string, unknown>
 ): { name: string; state: TaskState } | null {
   const current = getState(definition, currentStateName)
+  if (current.Type === 'Fail' || current.Type === 'Succeed') {
+    return null
+  }
   const initialNextName = current.Type === 'Task'
     ? (current.End === true ? null : (current.Next ?? null))
-    : resolveChoiceNext(current, context)
+    : current.Type === 'Pass'
+      ? (current.End === true ? null : (current.Next ?? null))
+      : resolveChoiceNext(current, context)
   let nextName = initialNextName
 
   while (nextName !== null) {
@@ -238,10 +268,18 @@ export function resolveNextTaskState (
     if (nextState.Type === 'Task') {
       return { name: nextName, state: nextState }
     }
-    // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- Type narrowing for future state types
     if (nextState.Type === 'Choice') {
       nextName = resolveChoiceNext(nextState, context)
       continue
+    }
+    if (nextState.Type === 'Pass') {
+      nextName = nextState.End === true ? null : (nextState.Next ?? null)
+      continue
+    }
+    switch (nextState.Type) {
+      case 'Succeed':
+      case 'Fail':
+        return null
     }
     throw new Error('UNSUPPORTED_STATE_TYPE')
   }
@@ -333,7 +371,7 @@ function applyOutputPath (context: Record<string, unknown>, outputPath?: string 
   return { value: selected }
 }
 
-export function buildStateInput (state: TaskState, context: Record<string, unknown>): unknown {
+export function buildStateInput (state: TaskState | PassState, context: Record<string, unknown>): unknown {
   const inputContext = applyInputPath(context, state.InputPath)
   if (state.Parameters === undefined) {
     return inputContext
@@ -342,10 +380,18 @@ export function buildStateInput (state: TaskState, context: Record<string, unkno
 }
 
 export function applyStateOutput (
-  state: TaskState,
+  state: TaskState | PassState,
   context: Record<string, unknown>,
   result: unknown
 ): Record<string, unknown> {
   const merged = applyResultPath(context, result, state.ResultPath)
   return applyOutputPath(merged, state.OutputPath)
+}
+
+export function applyPassState (
+  state: PassState,
+  context: Record<string, unknown>
+): Record<string, unknown> {
+  const output = buildStateInput(state, context)
+  return applyStateOutput(state, context, output)
 }

@@ -4,7 +4,7 @@ import type { Job } from 'bullmq'
 import { randomUUID } from 'node:crypto'
 import type { ActionJobData, ActionJobResult, Actions } from '../actions/interfaces.ts'
 import type { StateMachineDefinition } from './asl.ts'
-import { applyStateOutput, buildStateInput, getState, getTaskState, resolveNextTaskState } from './asl.ts'
+import { applyPassState, applyStateOutput, buildStateInput, getState, getTaskState, resolveChoiceNext } from './asl.ts'
 import type { WorkflowTrigger } from './workflow-type.ts'
 
 export interface WorkflowInstanceData {
@@ -105,22 +105,50 @@ class WorkflowInstance {
   ): Promise<Job<ActionJobData<T>, ActionJobResult<T>> | null> {
     const { queue } = diContainer.cradle
     const definition = await this.getDefinition()
-    const nextTask = resolveNextTaskState(definition, currentStateName, this.context)
-    if (nextTask === null) {
-      return null
+    const current = getState(definition, currentStateName)
+    let nextName: string | null = current.Type === 'Task'
+      ? (current.End === true ? null : (current.Next ?? null))
+      : current.Type === 'Pass'
+        ? (current.End === true ? null : (current.Next ?? null))
+        : current.Type === 'Choice'
+          ? resolveChoiceNext(current, this.context)
+          : null
+
+    while (nextName !== null) {
+      const nextState = getState(definition, nextName)
+      if (nextState.Type === 'Task') {
+        const jobData: ActionJobData<T> = {
+          actionType: nextState.Resource as T['actionType'],
+          input: buildStateInput(nextState, this.context) as T['input'],
+          workflowId: this.workflowId,
+          instanceId: this.instanceId,
+          stateName: nextName
+        }
+        const jobId = randomUUID()
+        const job = await queue.add(nextState.Resource, jobData, { jobId })
+        return job
+      }
+      if (nextState.Type === 'Pass') {
+        this.context = applyPassState(nextState, this.context)
+        await this.save()
+        nextName = nextState.End === true ? null : (nextState.Next ?? null)
+        continue
+      }
+      if (nextState.Type === 'Choice') {
+        nextName = resolveChoiceNext(nextState, this.context)
+        continue
+      }
+      switch (nextState.Type) {
+        case 'Succeed':
+          await this.complete()
+          return null
+        case 'Fail':
+          await this.fail()
+          return null
+      }
+      throw new Error('UNSUPPORTED_STATE_TYPE')
     }
-    const nextStateName = nextTask.name
-    const nextState = nextTask.state
-    const jobData: ActionJobData<T> = {
-      actionType: nextState.Resource as T['actionType'],
-      input: buildStateInput(nextState, this.context) as T['input'],
-      workflowId: this.workflowId,
-      instanceId: this.instanceId,
-      stateName: nextStateName
-    }
-    const jobId = randomUUID()
-    const job = await queue.add(nextState.Resource, jobData, { jobId })
-    return job
+    return null
   }
 
   public static async create (
@@ -132,32 +160,48 @@ class WorkflowInstance {
     if (definitionValue === null) {
       throw new Error('ERR_WORKFLOW_DEFINITION_NOT_FOUND')
     }
-    const definition = definitionValue as StateMachineDefinition
-    const context = { payload }
-    const startStateName = definition.StartAt
-    const startState = getState(definition, startStateName)
-    const startTask = startState.Type === 'Task'
-      ? { name: startStateName, state: startState }
-      : resolveNextTaskState(definition, startStateName, context)
-    if (startTask === null) {
+    const definition = definitionValue as unknown as StateMachineDefinition
+    let context: Record<string, unknown> = { payload }
+    let startName: string | null = definition.StartAt
+    let startState = getState(definition, startName)
+    while (startState.Type === 'Pass' || startState.Type === 'Choice') {
+      if (startState.Type === 'Pass') {
+        context = applyPassState(startState, context)
+        if (startState.End === true) {
+          throw new Error('ERR_WORKFLOW_START_STATE_NOT_FOUND')
+        }
+        startName = startState.Next ?? null
+      } else {
+        const nextName = resolveChoiceNext(startState, context)
+        if (nextName === null) {
+          throw new Error('ERR_WORKFLOW_START_STATE_NOT_FOUND')
+        }
+        startName = nextName
+      }
+      if (startName === null) {
+        throw new Error('ERR_WORKFLOW_START_STATE_NOT_FOUND')
+      }
+      startState = getState(definition, startName)
+    }
+    if (startState.Type !== 'Task') {
       throw new Error('ERR_WORKFLOW_START_STATE_NOT_FOUND')
     }
     const instanceId = randomUUID()
     const jobData: ActionJobData<Actions> = {
-      actionType: startTask.state.Resource as Actions['actionType'],
-      input: buildStateInput(startTask.state, context) as Actions['input'],
+      actionType: startState.Resource as Actions['actionType'],
+      input: buildStateInput(startState, context) as Actions['input'],
       workflowId: workflow.id,
       instanceId,
-      stateName: startTask.name
+      stateName: startName
     }
     const jobId = randomUUID()
-    await diContainer.cradle.queue.add(startTask.state.Resource, jobData, { jobId })
+    await diContainer.cradle.queue.add(startState.Resource, jobData, { jobId })
 
     const data: WorkflowInstanceData = {
       workflowId: workflow.id,
       instanceId,
       firstJobId: jobId,
-      currentStateName: startTask.name,
+      currentStateName: startName,
       status: 'pending',
       createdAt: Date.now(),
       trigger,

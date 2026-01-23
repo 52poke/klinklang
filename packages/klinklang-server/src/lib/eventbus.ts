@@ -101,7 +101,6 @@ export default class Subscriber {
             : (typeof value === 'string' ? value : JSON.stringify(value))
           if (valueStr !== '') {
             const key = `workflow:throttle:${workflow.id}:${createHash('sha256').update(valueStr).digest('hex')}`
-            // eslint-disable-next-line no-await-in-loop -- throttle must be enforced per trigger
             const ok = await this.#redis.set(key, '1', 'EX', trigger.throttle, 'NX')
             if (ok === null) {
               continue
@@ -109,7 +108,6 @@ export default class Subscriber {
           }
         }
 
-        // eslint-disable-next-line no-await-in-loop -- workflow instances should be created sequentially per message
         await createInstanceWithWorkflow(workflow, trigger, event)
         triggered[workflow.id] = true
         break

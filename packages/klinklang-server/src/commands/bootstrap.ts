@@ -28,14 +28,14 @@ export async function setupWorkflow (prisma: PrismaClient, workflowConfig: Workf
         isPrivate: workflowConfig.isPrivate,
         enabled: workflowConfig.enabled,
         triggers: workflowConfig.triggers as Prisma.InputJsonValue,
-        definition: definition as Prisma.InputJsonValue
+        definition: definition as unknown as Prisma.InputJsonValue
       }
     })
   } else {
     workflow = await prisma.workflow.update({
       where: { id: workflow.id },
       data: {
-        definition: definition as Prisma.InputJsonValue
+        definition: definition as unknown as Prisma.InputJsonValue
       }
     })
   }
