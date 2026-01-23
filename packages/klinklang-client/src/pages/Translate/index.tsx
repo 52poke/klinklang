@@ -100,6 +100,21 @@ export const Translate: React.FC = () => {
     })
   }, [sourceLng, targetLng])
 
+  if (!canTranslate) {
+    return (
+      <div className='mx-auto flex w-full max-w-6xl flex-col gap-6'>
+        <Card>
+          <CardHeader>
+            <CardTitle>LLM Translation</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className='text-xs text-muted-foreground'>Translation requires sysop or bot permissions.</div>
+          </CardContent>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className='mx-auto flex w-full max-w-6xl flex-col gap-6'>
       <Card>
@@ -149,16 +164,15 @@ export const Translate: React.FC = () => {
               </Select>
             </div>
             <div className='flex items-end'>
-              <Button className='h-10 w-full' onClick={translate} disabled={!canTranslate || loading}>
+              <Button className='h-10 w-full' onClick={translate} disabled={loading}>
                 {loading ? 'Translating…' : 'Translate'}
               </Button>
             </div>
           </div>
           <Separator />
-          {currentUser === null && <div className='text-xs text-muted-foreground'>Log in to use translation.</div>}
-          {currentUser !== null && !canTranslate && (
-            <div className='text-xs text-muted-foreground'>Translation requires sysop or bot permissions.</div>
-          )}
+          <div className='text-xs text-muted-foreground'>
+            Translation content may be sent to OpenRouter and underlying LLM providers.
+          </div>
           {error !== null && <div className='text-xs text-destructive'>{error}</div>}
         </CardContent>
       </Card>
