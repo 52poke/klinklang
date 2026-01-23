@@ -55,7 +55,7 @@ export const WorkflowDetail: React.FC = () => {
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <div>
           <h2 className='text-lg font-semibold'>Workflow detail</h2>
-          <p className='text-sm text-muted-foreground'>Read-only ASL node list.</p>
+          <p className='text-sm text-muted-foreground'>Workflow information and tasks.</p>
         </div>
         <div className='flex items-center gap-2'>
           <Button asChild variant='outline'>
@@ -90,13 +90,14 @@ export const WorkflowDetail: React.FC = () => {
         </Card>
       )}
 
-      {(definition === null || Object.keys(definition.States).length === 0) && error === null && !loading && canView && (
-        <Card>
-          <CardContent className='py-6 text-sm text-muted-foreground'>
-            No nodes available.
-          </CardContent>
-        </Card>
-      )}
+      {(definition === null || Object.keys(definition.States).length === 0) && error === null && !loading && canView
+        && (
+          <Card>
+            <CardContent className='py-6 text-sm text-muted-foreground'>
+              No nodes available.
+            </CardContent>
+          </Card>
+        )}
 
       {definition !== null && (
         <div className='grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]'>

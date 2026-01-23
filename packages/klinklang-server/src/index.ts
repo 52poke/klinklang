@@ -6,6 +6,7 @@ import { findWorkspaceDir } from '@pnpm/find-workspace-dir'
 import { fastify } from 'fastify'
 import { join } from 'node:path'
 import bootstrap from './commands/bootstrap.ts'
+import { startCronScheduler } from './lib/cron.ts'
 import { start } from './lib/eventbus.ts'
 import patchBigInt from './lib/ext.ts'
 import { register } from './lib/register.ts'
@@ -32,6 +33,7 @@ const launch = async (): Promise<void> => {
 
   await bootstrap({ config, prisma })
   await start({ config, prisma, notification, logger, redis })
+  await startCronScheduler({ prisma, redis, logger, notification })
   worker.run().catch((e: unknown) => {
     logger.error(e)
   })

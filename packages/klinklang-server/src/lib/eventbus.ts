@@ -144,6 +144,7 @@ export async function start ({ config, prisma, notification, logger, redis }: {
       try {
         const workflows = await prisma.workflow.findMany({
           where: {
+            enabled: true,
             triggers: {
               array_contains: [{ type: 'TRIGGER_EVENTBUS' }]
             }

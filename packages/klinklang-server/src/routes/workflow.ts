@@ -111,6 +111,10 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
         }
       }
 
+      if (!workflow.enabled) {
+        throw forbiddenError()
+      }
+
       const instance = await createInstanceWithWorkflow(workflow, supportsManualTrigger, request.body?.payload)
 
       return {

@@ -133,7 +133,7 @@ export const Workflows: React.FC = () => {
         <div>
           <h2 className='text-lg font-semibold'>Workflows</h2>
           <p className='text-sm text-muted-foreground'>
-            Manage and trigger workflows. Definitions are hidden on this page.
+            Manage and trigger workflows.
           </p>
         </div>
         <Button
