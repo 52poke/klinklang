@@ -1,19 +1,13 @@
-import { Delete } from '@mui/icons-material'
+import { Trash2 } from 'lucide-react'
+import React, { useCallback, useRef } from 'react'
+import { Button } from '../../components/ui/button'
 import {
-  Button,
   Card,
   CardContent,
-  Container,
-  Grid2,
-  IconButton,
-  List,
-  ListItem,
-  ListItemText,
-  Stack,
-  TextField,
-  Typography
-} from '@mui/material'
-import React, { useCallback, useRef } from 'react'
+  CardHeader,
+  CardTitle
+} from '../../components/ui/card'
+import { Input } from '../../components/ui/input'
 import { useUserStore } from '../../store/user'
 
 export const Settings: React.FC = () => {
@@ -32,7 +26,7 @@ export const Settings: React.FC = () => {
       }
     })
     if (response.status !== 200) {
-      console.log(await response.text())
+      await response.text()
       return
     }
     const { redirectURL } = await response.json() as { redirectURL: string }
@@ -44,63 +38,64 @@ export const Settings: React.FC = () => {
       method: 'DELETE'
     })
     if (response.status >= 300 || response.status < 200) {
-      console.log(await response.text())
+      await response.text()
       return
     }
     await fetchCurrentUser()
   }, [fetchCurrentUser])
 
   return (
-    <Container sx={{ my: 2 }}>
-      <Grid2 container spacing={2}>
+    <div className='mx-auto flex max-w-5xl flex-col gap-4'>
+      <div className='grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(0,2fr)]'>
         {(currentUser?.fediAccounts.length ?? 0) > 0 && (
-          <Grid2 size={{ xs: 12, sm: 2 }}>
-            <Card>
-              <CardContent>
-                <Typography variant='h5'>Linked ActivityPub accounts</Typography>
-                <List>
-                  {currentUser?.fediAccounts.map((account) => (
-                    <ListItem
-                      key={account.subject}
-                      disablePadding
-                      secondaryAction={
-                        <IconButton
-                          edge='end'
-                          onClick={() => {
-                            deleteFediAccount(account.id).catch(console.log)
-                          }}
-                        >
-                          <Delete />
-                        </IconButton>
-                      }
-                    >
-                      <ListItemText>{account.subject}</ListItemText>
-                    </ListItem>
-                  ))}
-                </List>
-              </CardContent>
-            </Card>
-          </Grid2>
-        )}
-        <Grid2 size={{ xs: 12, sm: 6 }}>
           <Card>
-            <CardContent>
-              <Typography variant='h5' mb={2}>Link to a new ActivityPub account</Typography>
-              <Stack direction='row' spacing={2}>
-                <TextField inputRef={domainEl} label='Your instance domain' size='small' />
-                <Button
-                  variant='contained'
-                  onClick={() => {
-                    fediConnect().catch(console.log)
-                  }}
+            <CardHeader>
+              <CardTitle>Linked ActivityPub accounts</CardTitle>
+            </CardHeader>
+            <CardContent className='space-y-2'>
+              {currentUser?.fediAccounts.map((account) => (
+                <div
+                  key={account.subject}
+                  className='flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm'
                 >
-                  Connect
-                </Button>
-              </Stack>
+                  <div className='truncate'>{account.subject}</div>
+                  <Button
+                    variant='ghost'
+                    size='icon'
+                    onClick={() => {
+                      deleteFediAccount(account.id).catch(() => undefined)
+                    }}
+                    aria-label={`Remove ${account.subject}`}
+                  >
+                    <Trash2 className='h-4 w-4' />
+                  </Button>
+                </div>
+              ))}
             </CardContent>
           </Card>
-        </Grid2>
-      </Grid2>
-    </Container>
+        )}
+        <Card>
+          <CardHeader>
+            <CardTitle>Link to a new ActivityPub account</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className='flex flex-col gap-3 sm:flex-row sm:items-center'>
+              <Input
+                ref={domainEl}
+                placeholder='Your instance domain'
+                className='sm:max-w-xs'
+              />
+              <Button
+                onClick={() => {
+                  fediConnect().catch(() => undefined)
+                }}
+              >
+                Connect
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }

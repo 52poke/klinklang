@@ -9,6 +9,7 @@ import type { Notification } from '../lib/notification.ts'
 import type { MediaWikiOAuth } from '../lib/oauth.ts'
 import type { FediverseService } from '../services/fediverse.ts'
 import type { TerminologyService } from '../services/terminology.ts'
+import type { TranslationService } from '../services/translation.ts'
 import type { WikiService } from '../services/wiki.ts'
 
 declare module 'fastify' {
@@ -32,6 +33,7 @@ declare module '@fastify/awilix' {
     subscriberRedis: Redis
     notification: Notification
     terminologyService: TerminologyService
+    translationService: TranslationService
     discordClient: Client
     worker: Worker
     queue: Queue

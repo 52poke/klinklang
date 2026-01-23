@@ -14,6 +14,7 @@ const userMiddleware = <T extends RouteGenericInterface>(requireLogin: boolean) 
             throw unauthorizedError()
           }
         }
+        // eslint-disable-next-line no-param-reassign, require-atomic-updates -- fastify request decoration
         request.user = user
       } catch (e) {
         request.log.error(e)

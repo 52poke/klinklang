@@ -3,7 +3,14 @@ import reactHooks from 'eslint-plugin-react-hooks'
 
 export default [
   {
-    ignores: ['**/build/', '**/dist/', 'node_modules/', 'eslint.config.mjs'],
+    ignores: [
+      '**/build/',
+      '**/dist/',
+      'node_modules/',
+      'eslint.config.mjs',
+      'tailwind.config.cjs',
+      'packages/klinklang-client/src/components/ui/**'
+    ],
   },
   {
     ...love,
@@ -32,7 +39,8 @@ export default [
       '@typescript-eslint/prefer-destructuring': 'off',
       'complexity': 'off',
       '@typescript-eslint/no-magic-numbers': 'off',
-      '@typescript-eslint/no-unsafe-type-assertion': 'off'
+      '@typescript-eslint/no-unsafe-type-assertion': 'off',
+      'no-await-in-loop': 'off'
     }
   }
 ]

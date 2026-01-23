@@ -6,7 +6,7 @@ import { type Consumer, type ConsumerConfig, type EachMessagePayload, Kafka, typ
 import { isEqual } from 'lodash-es'
 import { createHash } from 'node:crypto'
 import type { Logger } from 'pino'
-import { setTimeout } from 'timers/promises'
+import { setTimeout } from 'node:timers/promises'
 import type { WorkflowTrigger } from '../models/workflow-type.ts'
 import { createInstanceWithWorkflow } from '../models/workflow.ts'
 import type { Config } from './config.ts'
@@ -49,7 +49,7 @@ export default class Subscriber {
 
     await this.subscribe(Array.from(topics.keys()))
     this.#topics = topics
-    this.#logger.info('updated eventbus subscription.', Array.from(this.#topics.entries()))
+    this.#logger.info({ topics: Array.from(this.#topics.entries()) }, 'updated eventbus subscription.')
   }
 
   private async subscribe (topics: string[]): Promise<void> {
@@ -63,7 +63,7 @@ export default class Subscriber {
     }
     this.#consumer = this.#kafka.consumer(this.#consumerConfig)
     await this.#consumer.connect()
-    this.#logger.info('consumer ready to subscribe ' + topics.join(','))
+    this.#logger.info(`consumer ready to subscribe ${topics.join(',')}`)
     await this.#consumer.subscribe({ topics })
     await this.#consumer.run({
       eachMessage: this.handleMessage.bind(this)
@@ -144,6 +144,7 @@ export async function start ({ config, prisma, notification, logger, redis }: {
       try {
         const workflows = await prisma.workflow.findMany({
           where: {
+            enabled: true,
             triggers: {
               array_contains: [{ type: 'TRIGGER_EVENTBUS' }]
             }

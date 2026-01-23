@@ -49,13 +49,14 @@ class MediaWikiClient {
       body = formData.toString()
     }
 
-    let headers = this.#oauth !== undefined
-      ? this.#oauth.toHeader(this.#oauth.authorize({
+    let headers: Record<string, string> | undefined = undefined
+    if (this.#oauth !== undefined) {
+      headers = this.#oauth.toHeader(this.#oauth.authorize({
         url: url.toString(),
         data: form,
         method
       }, this.#token)) as unknown as Record<string, string>
-      : undefined
+    }
 
     if (method === 'POST') {
       headers = { ...headers, 'Content-Type': 'application/x-www-form-urlencoded' }
@@ -67,11 +68,11 @@ class MediaWikiClient {
       headers
     })
 
-    if (response.status >= 300 || response.status < 200) {
-      throw mediaWikiError(response.status, await response.text())
+    if (response.ok) {
+      return await response.json() as Response
     }
 
-    return await response.json() as Response
+    throw mediaWikiError(response.status, await response.text())
   }
 
   private async queryToken (type = 'csrf'): Promise<QueryTokenResponse> {
@@ -87,7 +88,9 @@ class MediaWikiClient {
     params.set('action', 'parse')
     params.set('page', page)
     params.set('prop', 'text')
-    variant !== undefined && params.set('variant', variant)
+    if (variant !== undefined) {
+      params.set('variant', variant)
+    }
     return await this.makeRequest({ method: 'GET', params })
   }
 

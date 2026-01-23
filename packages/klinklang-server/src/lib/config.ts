@@ -1,6 +1,6 @@
 import { findWorkspaceDir } from '@pnpm/find-workspace-dir'
 import convict from 'convict'
-import { join } from 'path'
+import { join } from 'node:path'
 
 const config = convict({
   app: {
@@ -105,6 +105,26 @@ const config = convict({
       format: String,
       env: 'DISCORD_TOKEN',
       default: ''
+    }
+  },
+  llm: {
+    baseUrl: {
+      doc: 'OpenAI-compatible API base URL',
+      format: String,
+      default: 'https://openrouter.ai/api/v1',
+      env: 'LLM_BASE_URL'
+    },
+    apiKey: {
+      doc: 'LLM API key',
+      format: String,
+      default: '',
+      env: 'LLM_API_KEY'
+    },
+    model: {
+      doc: 'LLM model name',
+      format: String,
+      default: 'nvidia/nemotron-3-nano-30b-a3b:free',
+      env: 'LLM_MODEL'
     }
   }
 })

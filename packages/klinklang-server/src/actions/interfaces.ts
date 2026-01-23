@@ -21,7 +21,7 @@ export type Actions =
 export interface ActionJobData<T extends Actions> extends Pick<T, 'actionType' | 'input'> {
   instanceId: string
   workflowId: string
-  actionId: string
+  stateName: string
 }
 
 export interface ActionJobResult<T extends Actions> extends Pick<T, 'output'> {

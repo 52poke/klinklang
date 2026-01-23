@@ -1,6 +1,6 @@
-import { diContainer } from '@fastify/awilix'
-import type { Action, Workflow } from '@mudkipme/klinklang-prisma'
-import { keyBy } from 'lodash-es'
+import type { Workflow } from '@mudkipme/klinklang-prisma'
+import type { StateMachineDefinition } from './asl.ts'
+import { getState, resolveChoiceNext } from './asl.ts'
 import WorkflowInstance from './workflow-instance.ts'
 import type { WorkflowTrigger } from './workflow-type.ts'
 
@@ -8,42 +8,45 @@ export async function getWorkflowInstances (workflow: Workflow, start = 0, stop 
   return await WorkflowInstance.getInstancesOfWorkflow(workflow.id, start, stop)
 }
 
-export async function getHeadActionOfWorkflow (workflow: Workflow): Promise<Action | null> {
-  const { prisma } = diContainer.cradle
-  return await prisma.action.findFirst({ where: { workflowId: workflow.id, isHead: true } })
-}
-
 export async function createInstanceWithWorkflow (
   workflow: Workflow,
   trigger?: WorkflowTrigger,
   payload?: unknown
 ): Promise<WorkflowInstance> {
-  const headAction = await getHeadActionOfWorkflow(workflow)
-  if (headAction === null) {
-    throw new Error('ERR_ACTION_NOT_FOUND')
+  const definitionValue = workflow.definition
+  if (definitionValue === null) {
+    throw new Error('ERR_WORKFLOW_DEFINITION_NOT_FOUND')
   }
-  return await WorkflowInstance.create(headAction, trigger, payload)
+  return await WorkflowInstance.create(workflow, trigger, payload)
 }
 
-export async function getLinkedActionsOfWorkflow (workflow: Workflow): Promise<Action[]> {
-  const { prisma } = diContainer.cradle
-  const actions = await prisma.action.findMany({ where: { workflowId: workflow.id } })
-  let current = actions.find(action => action.isHead)
-  if (current === undefined) {
-    return []
-  }
-
-  const actionMap = keyBy(actions, 'id')
-  const linkedActions = []
-  const visited: Record<string, boolean> = {}
-  while (current !== undefined) {
-    if (visited[current.id]) {
-      throw new Error('CIRCULAR_ACTION_FOUND')
+export function getLinkedStatesOfWorkflow (
+  workflow: Workflow
+): Array<{ name: string; state: Record<string, unknown> }> {
+  const definition = workflow.definition as unknown as StateMachineDefinition
+  const currentState = getState(definition, definition.StartAt)
+  const linkedStates: Array<{ name: string; state: Record<string, unknown> }> = []
+  const visited = new Set<string>()
+  let currentName = definition.StartAt
+  let current = currentState
+  while (true) {
+    if (visited.has(currentName)) {
+      throw new Error('CIRCULAR_STATE_FOUND')
     }
-    linkedActions.push(current)
-    visited[current.id] = true
-    current = current.nextActionId !== null ? actionMap[current.nextActionId] : undefined
+    visited.add(currentName)
+    linkedStates.push({ name: currentName, state: current as unknown as Record<string, unknown> })
+    const nextName = current.Type === 'Task'
+      ? (current.End === true ? null : (current.Next ?? null))
+      : current.Type === 'Pass'
+        ? (current.End === true ? null : (current.Next ?? null))
+        : current.Type === 'Choice'
+          ? resolveChoiceNext(current, {})
+          : null
+    if (nextName === null) {
+      break
+    }
+    currentName = nextName
+    current = getState(definition, currentName)
   }
-
-  return linkedActions
+  return linkedStates
 }

@@ -1,17 +1,11 @@
-import {
-  Button,
-  Checkbox,
-  Container,
-  Divider,
-  FormControl,
-  FormControlLabel,
-  Grid2,
-  InputLabel,
-  MenuItem,
-  Select,
-  TextField
-} from '@mui/material'
 import React, { useCallback, useRef, useState } from 'react'
+import { Button } from '../../components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
+import { Checkbox } from '../../components/ui/checkbox'
+import { Label } from '../../components/ui/label'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
+import { Separator } from '../../components/ui/separator'
+import { Textarea } from '../../components/ui/textarea'
 
 const languages: ReadonlyArray<{ value: string; text: string }> = [
   { value: 'en', text: 'English' },
@@ -40,16 +34,16 @@ export const TermReplacer: React.FC = () => {
   const [result, setResult] = useState('')
   const toggleCategory = useCallback((category: string, checked: boolean): void => {
     setSelectedCategories(current => {
-      if (!checked) {
-        current.delete(category)
-      } else {
+      if (checked) {
         current.add(category)
+      } else {
+        current.delete(category)
       }
       return new Set(current)
     })
   }, [])
   const toggleAllChecked = useCallback((checked: boolean) => {
-    setSelectedCategories(!checked ? new Set() : new Set(categories.map(category => category.value)))
+    setSelectedCategories(checked ? new Set(categories.map(category => category.value)) : new Set())
   }, [])
 
   const replace = useCallback(() => {
@@ -72,108 +66,105 @@ export const TermReplacer: React.FC = () => {
       const { text } = await response.json() as { text: string }
       setResult(text)
     }
-    load().catch(console.log)
+    load().catch(() => undefined)
   }, [sourceLng, targetLng, selectedCategories])
 
   return (
-    <Container>
-      <Grid2 container my={2} spacing={2}>
-        <Grid2 size={{ xs: 6, sm: 5 }}>
-          <FormControl fullWidth>
-            <InputLabel id='label-from'>From</InputLabel>
-            <Select
-              labelId='label-from'
-              label='From'
-              value={sourceLng}
-              onChange={(e) => {
-                setSourceLng(e.target.value)
-              }}
-            >
-              {languages.map((language) => (
-                <MenuItem key={language.value} value={language.value}>{language.text}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid2>
-        <Grid2 size={{ xs: 6, sm: 5 }}>
-          <FormControl fullWidth>
-            <InputLabel id='label-to'>To</InputLabel>
-            <Select
-              labelId='label-to'
-              label='To'
-              value={targetLng}
-              onChange={(e) => {
-                setTargetLng(e.target.value)
-              }}
-              fullWidth
-            >
-              {languages.map((language) => (
-                <MenuItem key={language.value} value={language.value}>{language.text}</MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-        </Grid2>
-        <Grid2 size={{ xs: 12, sm: 2 }}>
-          <Button size='large' variant='contained' fullWidth onClick={replace}>Replace</Button>
-        </Grid2>
-      </Grid2>
-
-      <Grid2 container my={2} spacing={2}>
-        {categories.map((category) => (
-          <Grid2 size={{ xs: 6, sm: 3, md: 2 }} key={category.value}>
-            <FormControlLabel
-              control={
+    <div className='mx-auto flex w-full max-w-6xl flex-col gap-6'>
+      <Card>
+        <CardHeader>
+          <CardTitle>Terminology Replacer</CardTitle>
+        </CardHeader>
+        <CardContent className='space-y-4'>
+          <div className='grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.5fr)]'>
+            <div className='space-y-2'>
+              <Label htmlFor='select-from'>From</Label>
+              <Select value={sourceLng} onValueChange={setSourceLng}>
+                <SelectTrigger id='select-from'>
+                  <SelectValue placeholder='Select language' />
+                </SelectTrigger>
+                <SelectContent>
+                  {languages.map((language) => (
+                    <SelectItem key={language.value} value={language.value}>
+                      {language.text}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className='space-y-2'>
+              <Label htmlFor='select-to'>To</Label>
+              <Select value={targetLng} onValueChange={setTargetLng}>
+                <SelectTrigger id='select-to'>
+                  <SelectValue placeholder='Select language' />
+                </SelectTrigger>
+                <SelectContent>
+                  {languages.map((language) => (
+                    <SelectItem key={language.value} value={language.value}>
+                      {language.text}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className='flex items-end'>
+              <Button className='h-10 w-full' onClick={replace}>
+                Replace
+              </Button>
+            </div>
+          </div>
+          <Separator />
+          <div className='grid gap-3 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 xl:grid-cols-6'>
+            {categories.map((category) => (
+              <label
+                key={category.value}
+                className='flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-muted'
+              >
                 <Checkbox
                   checked={selectedCategories.has(category.value)}
-                  onChange={e => {
-                    toggleCategory(category.value, e.target.checked)
+                  onCheckedChange={(checked) => {
+                    toggleCategory(category.value, checked === true)
                   }}
-                  name={category.value}
                 />
-              }
-              label={category.text}
-            />
-          </Grid2>
-        ))}
-        <Grid2 size={{ xs: 12, sm: 3, md: 2 }}>
-          <FormControlLabel
-            control={
+                {category.text}
+              </label>
+            ))}
+            <label className='flex items-center gap-2 rounded-md border px-3 py-2 text-sm transition-colors hover:bg-muted'>
               <Checkbox
                 checked={selectedCategories.size === categories.length}
-                onChange={e => {
-                  toggleAllChecked(e.target.checked)
+                onCheckedChange={(checked) => {
+                  toggleAllChecked(checked === true)
                 }}
               />
-            }
-            label='Select All'
-          />
-        </Grid2>
-      </Grid2>
+              Select All
+            </label>
+          </div>
+        </CardContent>
+      </Card>
 
-      <Divider />
-
-      <Grid2 container my={2} spacing={2}>
-        <Grid2 size={{ xs: 12, sm: 6 }}>
-          <TextField
-            label='Source'
-            required
-            multiline
-            fullWidth
-            rows={10}
-            inputRef={sourceEl}
-          />
-        </Grid2>
-        <Grid2 size={{ xs: 12, sm: 6 }}>
-          <TextField
-            label='Result'
-            disabled
-            multiline
-            fullWidth
-            rows={10}
-            value={result}
-          />
-        </Grid2>
-      </Grid2>
-    </Container>
+      <div className='grid gap-4 lg:grid-cols-2'>
+        <Card>
+          <CardHeader>
+            <CardTitle>Source</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Textarea
+              id='source-text'
+              required
+              rows={12}
+              ref={sourceEl}
+            />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Result</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Textarea id='result-text' rows={12} value={result} readOnly />
+          </CardContent>
+        </Card>
+      </div>
+    </div>
   )
 }

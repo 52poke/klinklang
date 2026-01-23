@@ -11,7 +11,7 @@ export abstract class ActionWorker<T extends Actions> {
   protected readonly input: T['input']
   protected readonly workflowId: string
   protected readonly instanceId: string
-  protected readonly actionId: string
+  protected readonly stateName: string
   #workflow?: Workflow & { user: User | null } | null
 
   public constructor (job: Job<ActionJobData<T>, ActionJobResult<T>>) {
@@ -19,7 +19,7 @@ export abstract class ActionWorker<T extends Actions> {
     this.input = job.data.input
     this.workflowId = job.data.workflowId
     this.instanceId = job.data.instanceId
-    this.actionId = job.data.actionId
+    this.stateName = job.data.stateName
   }
 
   protected async getInstance (): Promise<WorkflowInstance | null> {
@@ -43,10 +43,10 @@ export abstract class ActionWorker<T extends Actions> {
     if (instance === null) {
       throw new Error('WORKFLOW_INSTANCE_NOT_FOUND')
     }
-    await instance.started(this.jobId)
+    await instance.started(this.jobId, this.stateName)
     const output = await this.process()
-    await instance.update(this.actionId, output)
-    const nextJob = await instance.createNextJob(this.actionId)
+    await instance.update(this.stateName, output)
+    const nextJob = await instance.createNextJob(this.stateName)
     if (nextJob === null) {
       await instance.complete()
     }

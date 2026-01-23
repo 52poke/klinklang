@@ -12,3 +12,6 @@ export type WorkflowTrigger =
     type: 'TRIGGER_CRON'
     pattern: string
   }
+  | {
+    type: 'TRIGGER_MANUAL'
+  }

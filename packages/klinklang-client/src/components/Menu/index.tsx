@@ -1,6 +1,7 @@
-import { List, ListItem, ListItemButton, ListItemText } from '@mui/material'
-import React from 'react'
-import { useLocation } from 'react-router'
+import React, { useMemo } from 'react'
+import { NavLink } from 'react-router'
+import { cn } from '../../lib/utils'
+import { useUserStore } from '../../store/user'
 
 const menus = [
   {
@@ -8,23 +9,44 @@ const menus = [
     link: '/pages/replace'
   },
   {
+    title: 'Translate',
+    link: '/pages/translate',
+    requiresTranslate: true
+  },
+  {
     title: 'Workflows',
     link: '/pages/workflows'
   }
 ]
 
-export const KlinklangMenu: React.FC = () => {
-  const location = useLocation()
+export interface KlinklangMenuProps {
+  onNavigate?: () => void
+}
+
+export const KlinklangMenu: React.FC<KlinklangMenuProps> = ({ onNavigate }) => {
+  const { currentUser } = useUserStore()
+  const canTranslate = useMemo(() => {
+    const groups = currentUser?.groups ?? []
+    return groups.includes('sysop') || groups.includes('bot')
+  }, [currentUser])
 
   return (
-    <List>
-      {menus.map((menu) => (
-        <ListItem key={menu.title} disablePadding>
-          <ListItemButton href={menu.link} selected={location.pathname === menu.link}>
-            <ListItemText primary={menu.title} />
-          </ListItemButton>
-        </ListItem>
+    <nav className='flex flex-col gap-1'>
+      {menus.filter(menu => !menu.requiresTranslate || canTranslate).map((menu) => (
+        <NavLink
+          key={menu.title}
+          to={menu.link}
+          onClick={() => onNavigate?.()}
+          className={({ isActive }) =>
+            cn(
+              'rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted',
+              isActive && 'bg-muted text-foreground'
+            )
+          }
+        >
+          {menu.title}
+        </NavLink>
       ))}
-    </List>
+    </nav>
   )
 }

@@ -11,9 +11,9 @@ export class WikiService {
   readonly defaultClient: MediaWikiClient
 
   constructor ({ config, mediaWikiOAuth }: { config: Config; mediaWikiOAuth: MediaWikiOAuth }) {
-    this.#apiRoot = config.get('mediawiki').scriptPath + 'api.php'
+    this.#apiRoot = `${config.get('mediawiki').scriptPath}api.php`
     this.#oauth = mediaWikiOAuth.oauth
-    this.defaultClient = new MediaWikiClient({ apiRoot: config.get('mediawiki').scriptPath + 'api.php' })
+    this.defaultClient = new MediaWikiClient({ apiRoot: `${config.get('mediawiki').scriptPath}api.php` })
   }
 
   authedClient (token: Token): MediaWikiClient {
