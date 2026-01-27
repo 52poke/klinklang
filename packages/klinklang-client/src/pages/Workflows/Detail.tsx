@@ -5,6 +5,7 @@ import { Card, CardContent } from '../../components/ui/card'
 import { useUserStore } from '../../store/user'
 import type { StateMachineDefinition } from './definition'
 import { FlowTimeline } from './FlowTimeline'
+import { WorkflowEditDialog } from './WorkflowEditDialog'
 import { WorkflowMeta, type WorkflowMetaData } from './WorkflowMeta'
 
 export const WorkflowDetail: React.FC = () => {
@@ -16,6 +17,11 @@ export const WorkflowDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
 
   const canView = useMemo(() => currentUser !== null, [currentUser])
+
+  const hydrateFromWorkflow = useCallback((workflowData: WorkflowMetaData, definitionData: StateMachineDefinition) => {
+    setWorkflow(workflowData)
+    setDefinition(definitionData)
+  }, [])
 
   const fetchActions = useCallback(async () => {
     if (workflowId === undefined) {
@@ -37,18 +43,21 @@ export const WorkflowDetail: React.FC = () => {
         return
       }
       const data = await response.json() as { definition: StateMachineDefinition; workflow: WorkflowMetaData }
-      setDefinition(data.definition)
-      setWorkflow(data.workflow)
+      hydrateFromWorkflow(data.workflow, data.definition)
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to load workflow actions.')
     } finally {
       setLoading(false)
     }
-  }, [workflowId])
+  }, [hydrateFromWorkflow, workflowId])
 
   useEffect(() => {
     fetchActions().catch(() => undefined)
   }, [fetchActions])
+
+  const handleWorkflowUpdated = useCallback((workflowData: WorkflowMetaData, definitionData: StateMachineDefinition) => {
+    hydrateFromWorkflow(workflowData, definitionData)
+  }, [hydrateFromWorkflow])
 
   return (
     <div className='flex flex-col gap-4'>
@@ -64,6 +73,14 @@ export const WorkflowDetail: React.FC = () => {
           <Button asChild variant='outline'>
             <Link to={`/pages/workflows/${workflowId ?? ''}/instances`}>Instances</Link>
           </Button>
+          {workflow !== null && definition !== null && (
+            <WorkflowEditDialog
+              workflowId={workflowId ?? ''}
+              workflow={workflow}
+              definition={definition}
+              onUpdated={handleWorkflowUpdated}
+            />
+          )}
           <Button
             variant='outline'
             onClick={() => {
@@ -101,7 +118,9 @@ export const WorkflowDetail: React.FC = () => {
 
       {definition !== null && (
         <div className='grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]'>
-          {workflow !== null && <WorkflowMeta workflow={workflow} />}
+          <div className='flex flex-col gap-4'>
+            {workflow !== null && <WorkflowMeta workflow={workflow} />}
+          </div>
           <FlowTimeline definition={definition} />
         </div>
       )}
