@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import { Link } from 'react-router'
 import {
   AlertDialog,
@@ -15,18 +15,8 @@ import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Separator } from '../../components/ui/separator'
 import { useUserStore } from '../../store/user'
+import { useWorkflowListStore, type WorkflowSummary } from '../../store/workflows'
 import { WorkflowCreateDialog } from './WorkflowCreateDialog'
-
-interface Workflow {
-  id: string
-  name: string
-  isPrivate: boolean
-  enabled: boolean
-  triggers: unknown[]
-  createdAt: string
-  updatedAt: string
-  userId?: string | null
-}
 
 const formatDateTime = (value: string): string => {
   const date = new Date(value)
@@ -38,14 +28,19 @@ const formatDateTime = (value: string): string => {
 
 export const Workflows: React.FC = () => {
   const { currentUser } = useUserStore()
-  const [workflows, setWorkflows] = useState<Workflow[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [triggering, setTriggering] = useState<Record<string, boolean>>({})
-  const [lastTriggerResult, setLastTriggerResult] = useState<Record<string, string>>({})
-  const [payloadDrafts, setPayloadDrafts] = useState<Record<string, string>>({})
-  const [payloadErrors, setPayloadErrors] = useState<Record<string, string>>({})
-  const [dialogOpen, setDialogOpen] = useState<Record<string, boolean>>({})
+  const workflows = useWorkflowListStore((state) => state.workflows)
+  const loading = useWorkflowListStore((state) => state.loading)
+  const error = useWorkflowListStore((state) => state.error)
+  const triggering = useWorkflowListStore((state) => state.triggering)
+  const lastTriggerResult = useWorkflowListStore((state) => state.lastTriggerResult)
+  const payloadDrafts = useWorkflowListStore((state) => state.payloadDrafts)
+  const payloadErrors = useWorkflowListStore((state) => state.payloadErrors)
+  const dialogOpen = useWorkflowListStore((state) => state.dialogOpen)
+  const fetchWorkflows = useWorkflowListStore((state) => state.fetchWorkflows)
+  const triggerWorkflow = useWorkflowListStore((state) => state.triggerWorkflow)
+  const setDialogOpen = useWorkflowListStore((state) => state.setDialogOpen)
+  const setPayloadDraft = useWorkflowListStore((state) => state.setPayloadDraft)
+  const addWorkflow = useWorkflowListStore((state) => state.addWorkflow)
 
   const canTriggerManual = useMemo(() => {
     const groups = currentUser?.groups ?? []
@@ -55,7 +50,7 @@ export const Workflows: React.FC = () => {
     const groups = currentUser?.groups ?? []
     return groups.includes('sysop') || groups.includes('bot')
   }, [currentUser])
-  const hasManualTrigger = useCallback((workflow: Workflow): boolean => (
+  const hasManualTrigger = useCallback((workflow: WorkflowSummary): boolean => (
     workflow.triggers.some((trigger) =>
       typeof trigger === 'object'
       && trigger !== null
@@ -63,74 +58,13 @@ export const Workflows: React.FC = () => {
     )
   ), [])
 
-  const fetchWorkflows = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await fetch('/api/workflow')
-      if (response.status === 401) {
-        setError('Please log in to view workflows.')
-        setWorkflows([])
-        return
-      }
-      if (!response.ok) {
-        setError(`Failed to load workflows (HTTP ${response.status}).`)
-        return
-      }
-      const data = await response.json() as { workflows: Workflow[] }
-      setWorkflows(data.workflows)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load workflows.')
-    } finally {
-      setLoading(false)
-    }
-  }, [])
-
-  useEffect(() => {
-    fetchWorkflows().catch(() => undefined)
+  const refreshWorkflows = useCallback(() => {
+    void fetchWorkflows()
   }, [fetchWorkflows])
 
-  const triggerWorkflow = useCallback(async (workflowId: string, payloadText?: string): Promise<boolean> => {
-    setTriggering((prev) => ({ ...prev, [workflowId]: true }))
-    setLastTriggerResult((prev) => ({ ...prev, [workflowId]: '' }))
-    setPayloadErrors((prev) => ({ ...prev, [workflowId]: '' }))
-    try {
-      let payloadBody: Record<string, unknown> | undefined = undefined
-      if (payloadText !== undefined && payloadText.trim() !== '') {
-        try {
-          payloadBody = { payload: JSON.parse(payloadText) as unknown }
-        } catch {
-          setPayloadErrors((prev) => ({ ...prev, [workflowId]: 'Invalid JSON payload.' }))
-          return false
-        }
-      }
-
-      const headers = payloadBody === undefined ? undefined : { 'Content-Type': 'application/json' }
-      const body = payloadBody === undefined ? undefined : JSON.stringify(payloadBody)
-      const response = await fetch(`/api/workflow/${workflowId}/trigger`, {
-        method: 'POST',
-        headers,
-        body
-      })
-      if (!response.ok) {
-        const message = response.status === 403
-          ? 'Forbidden'
-          : `Failed (HTTP ${response.status})`
-        setLastTriggerResult((prev) => ({ ...prev, [workflowId]: message }))
-        return false
-      }
-      setLastTriggerResult((prev) => ({ ...prev, [workflowId]: 'Triggered' }))
-      return true
-    } catch (err) {
-      setLastTriggerResult((prev) => ({
-        ...prev,
-        [workflowId]: err instanceof Error ? err.message : 'Trigger failed'
-      }))
-      return false
-    } finally {
-      setTriggering((prev) => ({ ...prev, [workflowId]: false }))
-    }
-  }, [])
+  useEffect(() => {
+    void fetchWorkflows()
+  }, [fetchWorkflows])
 
   return (
     <div className='flex flex-col gap-4'>
@@ -146,14 +80,14 @@ export const Workflows: React.FC = () => {
             <WorkflowCreateDialog
               userId={currentUser?.id ?? null}
               onCreated={(workflow) => {
-                setWorkflows((prev) => [workflow, ...prev])
+                addWorkflow(workflow)
               }}
             />
           )}
           <Button
             variant='outline'
             onClick={() => {
-              void fetchWorkflows()
+              refreshWorkflows()
             }}
             disabled={loading}
           >
@@ -195,12 +129,12 @@ export const Workflows: React.FC = () => {
                   <Link to={`/pages/workflows/${workflow.id}`}>View</Link>
                 </Button>
                 {hasManualTrigger(workflow) && (
-                  <AlertDialog
-                    open={dialogOpen[workflow.id] ?? false}
-                    onOpenChange={(open) => {
-                      setDialogOpen((prev) => ({ ...prev, [workflow.id]: open }))
-                    }}
-                  >
+                    <AlertDialog
+                      open={dialogOpen[workflow.id] ?? false}
+                      onOpenChange={(open) => {
+                        setDialogOpen(workflow.id, open)
+                      }}
+                    >
                     <AlertDialogTrigger asChild>
                       <Button disabled={!canTriggerManual || triggering[workflow.id]}>
                         {triggering[workflow.id] ? 'Triggering…' : 'Trigger'}
@@ -225,10 +159,7 @@ export const Workflows: React.FC = () => {
                           value={payloadDrafts[workflow.id] ?? ''}
                           onChange={(event) => {
                             const value = event.target.value
-                            setPayloadDrafts((prev) => ({ ...prev, [workflow.id]: value }))
-                            if ((payloadErrors[workflow.id] ?? '') !== '') {
-                              setPayloadErrors((prev) => ({ ...prev, [workflow.id]: '' }))
-                            }
+                            setPayloadDraft(workflow.id, value)
                           }}
                         />
                         {(payloadErrors[workflow.id] ?? '') !== '' && (
@@ -244,7 +175,7 @@ export const Workflows: React.FC = () => {
                             triggerWorkflow(workflow.id, payloadText)
                               .then((ok) => {
                                 if (ok) {
-                                  setDialogOpen((prev) => ({ ...prev, [workflow.id]: false }))
+                                  setDialogOpen(workflow.id, false)
                                 }
                               })
                               .catch(() => undefined)

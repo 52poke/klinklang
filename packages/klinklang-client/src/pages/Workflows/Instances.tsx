@@ -1,22 +1,10 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo } from 'react'
 import { Link, useParams } from 'react-router'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Separator } from '../../components/ui/separator'
 import { useUserStore } from '../../store/user'
-
-interface WorkflowInstance {
-  workflowId: string
-  instanceId: string
-  firstJobId: string
-  currentJobId?: string
-  currentStateName?: string
-  status: 'pending' | 'running' | 'failed' | 'completed'
-  createdAt: number
-  startedAt?: number
-  completedAt?: number
-  trigger?: unknown
-}
+import { useWorkflowInstancesStore, type WorkflowInstance } from '../../store/workflows'
 
 const formatTime = (value?: number): string => {
   if (value === undefined) {
@@ -39,42 +27,30 @@ const statusStyles: Record<WorkflowInstance['status'], string> = {
 export const WorkflowInstances: React.FC = () => {
   const { workflowId } = useParams<{ workflowId: string }>()
   const { currentUser } = useUserStore()
-  const [instances, setInstances] = useState<WorkflowInstance[]>([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
+  const instances = useWorkflowInstancesStore((state) => state.instances)
+  const loading = useWorkflowInstancesStore((state) => state.loading)
+  const error = useWorkflowInstancesStore((state) => state.error)
+  const fetchInstancesFromStore = useWorkflowInstancesStore((state) => state.fetchInstances)
+  const setInstancesError = useWorkflowInstancesStore((state) => state.setError)
+  const clearInstances = useWorkflowInstancesStore((state) => state.clear)
 
   const canView = useMemo(() => currentUser !== null, [currentUser])
 
   const fetchInstances = useCallback(async () => {
     if (workflowId === undefined) {
-      setError('Missing workflow id.')
+      clearInstances()
+      setInstancesError('Missing workflow id.')
       return
     }
-    setLoading(true)
-    setError(null)
-    try {
-      const response = await fetch(`/api/workflow/${workflowId}/instances`)
-      if (response.status === 401) {
-        setError('Please log in to view workflow instances.')
-        setInstances([])
-        return
-      }
-      if (!response.ok) {
-        setError(`Failed to load workflow instances (HTTP ${response.status}).`)
-        return
-      }
-      const data = await response.json() as { instances: WorkflowInstance[] }
-      setInstances(data.instances)
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load workflow instances.')
-    } finally {
-      setLoading(false)
-    }
-  }, [workflowId])
+    await fetchInstancesFromStore(workflowId)
+  }, [clearInstances, fetchInstancesFromStore, setInstancesError, workflowId])
 
   useEffect(() => {
-    fetchInstances().catch(() => undefined)
-  }, [fetchInstances])
+    void fetchInstances()
+    return () => {
+      clearInstances()
+    }
+  }, [clearInstances, fetchInstances])
 
   return (
     <div className='flex flex-col gap-4'>
