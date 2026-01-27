@@ -9,10 +9,13 @@ interface FlowTimelineProps {
 
 export const FlowTimeline: React.FC<FlowTimelineProps> = ({ definition }) => {
   const flow = buildPath(definition, definition.StartAt, new Set())
+  const showLine = flow.length > 1
 
   return (
     <div className='relative space-y-6'>
-      <div className='absolute left-5 top-4 z-0 hidden h-[calc(100%-2rem)] w-px bg-border lg:block' />
+      {showLine && (
+        <div className='absolute left-5 top-4 z-0 hidden h-[calc(100%-2rem)] w-px bg-border lg:block' />
+      )}
       {flow.map((item, index) => {
         if (item.kind === 'choice') {
           return (

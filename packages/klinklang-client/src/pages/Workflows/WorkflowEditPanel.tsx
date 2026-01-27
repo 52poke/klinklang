@@ -1,5 +1,5 @@
 import Editor from '@monaco-editor/react'
-import React, { useCallback, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Checkbox } from '../../components/ui/checkbox'
 import { Input } from '../../components/ui/input'
@@ -15,13 +15,15 @@ interface WorkflowFormState {
 }
 
 interface WorkflowEditPanelProps {
-  workflowId: string
+  mode?: 'edit' | 'create'
+  workflowId?: string
   workflow: WorkflowMetaData
   definition: StateMachineDefinition
   onUpdated: (workflow: WorkflowMetaData, definition: StateMachineDefinition) => void
 }
 
 export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
+  mode = 'edit',
   workflowId,
   workflow,
   definition,
@@ -52,6 +54,14 @@ export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
     }
   }, [definitionText])
 
+  useEffect(() => {
+    setFormState(initialForm)
+    setDefinitionText(initialDefinitionText)
+    setTriggerDrafts(initialTriggers)
+    setSaveError(null)
+    setSaveSuccess(null)
+  }, [initialDefinitionText, initialForm, initialTriggers])
+
   const isDirty = useMemo(() => {
     if (formState.name !== initialForm.name) {
       return true
@@ -70,6 +80,13 @@ export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
     }
     return false
   }, [definitionText, formState, initialDefinitionText, initialForm, initialTriggers, triggerDrafts])
+
+  const canSubmit = useMemo(() => {
+    if (mode === 'create') {
+      return formState.name.trim().length > 0
+    }
+    return isDirty
+  }, [formState.name, isDirty, mode])
 
   const resetForm = useCallback(() => {
     setFormState(initialForm)
@@ -111,24 +128,42 @@ export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
       payload.definition = definitionPayload
     }
 
-    if (Object.keys(payload).length === 0) {
+    if (mode === 'edit' && Object.keys(payload).length === 0) {
       setSaveSuccess('No changes to save.')
+      return
+    }
+
+    if (mode === 'edit' && (workflowId === undefined || workflowId === '')) {
+      setSaveError('Missing workflow id.')
       return
     }
 
     setSaving(true)
     try {
-      const response = await fetch(`/api/workflow/${workflowId}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(payload)
-      })
+      const response = await fetch(
+        mode === 'create' ? '/api/workflow' : `/api/workflow/${workflowId}`,
+        {
+          method: mode === 'create' ? 'POST' : 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(
+            mode === 'create'
+              ? {
+                  name: formState.name,
+                  isPrivate: formState.isPrivate,
+                  enabled: formState.enabled,
+                  triggers: triggerResult.triggers,
+                  definition: definitionPayload
+                }
+              : payload
+          )
+        }
+      )
       if (response.status === 401) {
-        setSaveError('Please log in to update workflow.')
+        setSaveError(mode === 'create' ? 'Please log in to create workflow.' : 'Please log in to update workflow.')
         return
       }
       if (response.status === 403) {
-        setSaveError('You do not have permission to update this workflow.')
+        setSaveError(mode === 'create' ? 'You do not have permission to create workflows.' : 'You do not have permission to update this workflow.')
         return
       }
       if (!response.ok) {
@@ -142,9 +177,9 @@ export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
       }
       const data = await response.json() as { workflow: WorkflowMetaData }
       onUpdated(data.workflow, definitionPayload)
-      setSaveSuccess('Workflow updated.')
+      setSaveSuccess(mode === 'create' ? 'Workflow created.' : 'Workflow updated.')
     } catch (err) {
-      setSaveError(err instanceof Error ? err.message : 'Failed to update workflow.')
+      setSaveError(err instanceof Error ? err.message : (mode === 'create' ? 'Failed to create workflow.' : 'Failed to update workflow.'))
     } finally {
       setSaving(false)
     }
@@ -157,6 +192,7 @@ export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
     onUpdated,
     parseDefinition,
     triggerDrafts,
+    mode,
     workflowId
   ])
 
@@ -226,9 +262,9 @@ export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
           onClick={() => {
             void saveChanges()
           }}
-          disabled={saving || !isDirty}
+          disabled={saving || !canSubmit}
         >
-          {saving ? 'Saving...' : 'Save changes'}
+          {saving ? 'Saving...' : (mode === 'create' ? 'Create workflow' : 'Save changes')}
         </Button>
         <Button size='sm' variant='outline' onClick={resetForm} disabled={saving}>
           Reset

@@ -15,6 +15,7 @@ import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Separator } from '../../components/ui/separator'
 import { useUserStore } from '../../store/user'
+import { WorkflowCreateDialog } from './WorkflowCreateDialog'
 
 interface Workflow {
   id: string
@@ -47,6 +48,10 @@ export const Workflows: React.FC = () => {
   const [dialogOpen, setDialogOpen] = useState<Record<string, boolean>>({})
 
   const canTriggerManual = useMemo(() => {
+    const groups = currentUser?.groups ?? []
+    return groups.includes('sysop') || groups.includes('bot')
+  }, [currentUser])
+  const canCreate = useMemo(() => {
     const groups = currentUser?.groups ?? []
     return groups.includes('sysop') || groups.includes('bot')
   }, [currentUser])
@@ -136,15 +141,25 @@ export const Workflows: React.FC = () => {
             Manage and trigger workflows.
           </p>
         </div>
-        <Button
-          variant='outline'
-          onClick={() => {
-            void fetchWorkflows()
-          }}
-          disabled={loading}
-        >
-          {loading ? 'Refreshing...' : 'Refresh'}
-        </Button>
+        <div className='flex items-center gap-2'>
+          {canCreate && (
+            <WorkflowCreateDialog
+              userId={currentUser?.id ?? null}
+              onCreated={(workflow) => {
+                setWorkflows((prev) => [workflow, ...prev])
+              }}
+            />
+          )}
+          <Button
+            variant='outline'
+            onClick={() => {
+              void fetchWorkflows()
+            }}
+            disabled={loading}
+          >
+            {loading ? 'Refreshing...' : 'Refresh'}
+          </Button>
+        </div>
       </div>
 
       {error !== null && (

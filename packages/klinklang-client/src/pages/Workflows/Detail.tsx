@@ -17,6 +17,16 @@ export const WorkflowDetail: React.FC = () => {
   const [error, setError] = useState<string | null>(null)
 
   const canView = useMemo(() => currentUser !== null, [currentUser])
+  const canEdit = useMemo(() => {
+    if (currentUser === null || workflow === null) {
+      return false
+    }
+    const isOwner = workflow.userId !== null && workflow.userId !== undefined && workflow.userId === currentUser.id
+    if (workflow.isPrivate) {
+      return isOwner
+    }
+    return isOwner || currentUser.groups.includes('sysop')
+  }, [currentUser, workflow])
 
   const hydrateFromWorkflow = useCallback((workflowData: WorkflowMetaData, definitionData: StateMachineDefinition) => {
     setWorkflow(workflowData)
@@ -73,7 +83,7 @@ export const WorkflowDetail: React.FC = () => {
           <Button asChild variant='outline'>
             <Link to={`/pages/workflows/${workflowId ?? ''}/instances`}>Instances</Link>
           </Button>
-          {workflow !== null && definition !== null && (
+          {workflow !== null && definition !== null && canEdit && (
             <WorkflowEditDialog
               workflowId={workflowId ?? ''}
               workflow={workflow}

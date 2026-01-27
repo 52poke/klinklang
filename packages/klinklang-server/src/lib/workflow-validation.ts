@@ -102,7 +102,23 @@ const workflowUpdateSchema = z.object({
   }
 })
 
+const workflowCreateSchema = z.object({
+  name: z.string().min(1),
+  isPrivate: z.boolean(),
+  enabled: z.boolean(),
+  triggers: z.array(workflowTriggerSchema),
+  definition: workflowDefinitionSchema
+}).strict()
+
 export interface WorkflowUpdatePayload {
+  name: string
+  isPrivate: boolean
+  enabled: boolean
+  triggers: WorkflowTrigger[]
+  definition: StateMachineDefinition
+}
+
+export interface WorkflowCreatePayload {
   name: string
   isPrivate: boolean
   enabled: boolean
@@ -151,6 +167,43 @@ export function validateWorkflowUpdatePayload (
       name: parsed.data.name ?? base.name,
       isPrivate: parsed.data.isPrivate ?? base.isPrivate,
       enabled: parsed.data.enabled ?? base.enabled,
+      triggers,
+      definition
+    },
+    issues: []
+  }
+}
+
+export function validateWorkflowCreatePayload (
+  payload: unknown
+): { data: WorkflowCreatePayload | null; issues: string[] } {
+  const parsed = workflowCreateSchema.safeParse(payload)
+  if (!parsed.success) {
+    return {
+      data: null,
+      issues: parsed.error.issues.map((issue) => {
+        const path = issue.path.length === 0 ? 'payload' : issue.path.join('.')
+        return `${path}: ${issue.message}`
+      })
+    }
+  }
+
+  const triggers = parsed.data.triggers as WorkflowTrigger[]
+  const definition = parsed.data.definition as StateMachineDefinition
+  const issues = [
+    ...validateTriggers(triggers),
+    ...validateStateMachineDefinition(definition)
+  ]
+
+  if (issues.length > 0) {
+    return { data: null, issues }
+  }
+
+  return {
+    data: {
+      name: parsed.data.name,
+      isPrivate: parsed.data.isPrivate,
+      enabled: parsed.data.enabled,
       triggers,
       definition
     },

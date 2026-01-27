@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useState } from 'react'
 import { Button } from '../../components/ui/button'
 import {
   Dialog,
@@ -24,22 +24,30 @@ export const WorkflowEditDialog: React.FC<WorkflowEditDialogProps> = ({
   workflow,
   definition,
   onUpdated
-}) => (
-  <Dialog>
-    <DialogTrigger asChild>
-      <Button variant='outline'>Edit</Button>
-    </DialogTrigger>
-    <DialogContent className='max-h-[85vh] overflow-y-auto'>
-      <DialogHeader>
-        <DialogTitle>Edit workflow</DialogTitle>
-        <DialogDescription>Update metadata, triggers, and definition.</DialogDescription>
-      </DialogHeader>
-      <WorkflowEditPanel
-        workflowId={workflowId}
-        workflow={workflow}
-        definition={definition}
-        onUpdated={onUpdated}
-      />
-    </DialogContent>
-  </Dialog>
-)
+}) => {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant='outline'>Edit</Button>
+      </DialogTrigger>
+      <DialogContent className='max-h-[85vh] overflow-y-auto'>
+        <DialogHeader>
+          <DialogTitle>Edit workflow</DialogTitle>
+          <DialogDescription>Update metadata, triggers, and definition.</DialogDescription>
+        </DialogHeader>
+        <WorkflowEditPanel
+          mode='edit'
+          workflowId={workflowId}
+          workflow={workflow}
+          definition={definition}
+          onUpdated={(nextWorkflow, nextDefinition) => {
+            onUpdated(nextWorkflow, nextDefinition)
+            setOpen(false)
+          }}
+        />
+      </DialogContent>
+    </Dialog>
+  )
+}
