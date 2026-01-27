@@ -1,0 +1,14 @@
+export const SUPPORTED_ACTION_TYPES = [
+  'GET_HTML',
+  'PARSE_TERMINOLOGY_LIST',
+  'UPDATE_TERMINOLOGY',
+  'GET_TEXT',
+  'EDIT_WIKI',
+  'REGEXP_MATCH',
+  'SCSS_COMPILE',
+  'DISCORD_MESSAGE',
+  'REQUEST',
+  'FEDI_POST'
+] as const
+
+export type SupportedActionType = typeof SUPPORTED_ACTION_TYPES[number]

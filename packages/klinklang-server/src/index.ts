@@ -46,9 +46,14 @@ const launch = async (): Promise<void> => {
   const server = fastify({ loggerInstance: logger, trustProxy: true })
 
   await server.register(fastifyCookie)
+  const sessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000
   await server.register(fastifySession, {
     secret: config.get('app').secret,
-    cookie: { secure: process.env.NODE_ENV === 'production' },
+    cookie: {
+      secure: process.env.NODE_ENV === 'production',
+      maxAge: sessionMaxAgeMs
+    },
+    rolling: true,
     store: new RedisSessionStore(redis, `${config.get('app').prefix}sess:`)
   })
 

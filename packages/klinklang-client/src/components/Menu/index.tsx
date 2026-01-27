@@ -32,7 +32,7 @@ export const KlinklangMenu: React.FC<KlinklangMenuProps> = ({ onNavigate }) => {
 
   return (
     <nav className='flex flex-col gap-1'>
-      {menus.filter(menu => !menu.requiresTranslate || canTranslate).map((menu) => (
+      {menus.filter(menu => !(menu.requiresTranslate ?? false) || canTranslate).map((menu) => (
         <NavLink
           key={menu.title}
           to={menu.link}
@@ -41,8 +41,7 @@ export const KlinklangMenu: React.FC<KlinklangMenuProps> = ({ onNavigate }) => {
             cn(
               'rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted',
               isActive && 'bg-muted text-foreground'
-            )
-          }
+            )}
         >
           {menu.title}
         </NavLink>

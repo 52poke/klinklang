@@ -1,9 +1,11 @@
+import type { Prisma } from '@mudkipme/klinklang-prisma'
 import type { FastifyPluginCallback, FastifyRequest } from 'fastify'
 import { forbiddenError, workflowNotFoundError } from '../lib/errors.ts'
 import userMiddleware from '../middlewares/user.ts'
 import type { StateMachineDefinition } from '../models/asl.ts'
 import type { WorkflowTrigger } from '../models/workflow-type.ts'
 import { createInstanceWithWorkflow, getWorkflowInstances } from '../models/workflow.ts'
+import { validateWorkflowCreatePayload, validateWorkflowUpdatePayload } from '../lib/workflow-validation.ts'
 
 const workflowRoutes: FastifyPluginCallback = (fastify) => {
   const { prisma } = fastify.diContainer.cradle
@@ -28,6 +30,40 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
       await reply.send({
         workflows
       })
+    }
+  })
+
+  fastify.route({
+    method: 'POST',
+    url: '/api/workflow',
+    preHandler: userMiddleware(true),
+    handler: async (request: FastifyRequest<{ Body: unknown }>, reply) => {
+      const requesterGroups = request.user?.groups ?? []
+      const canCreate = requesterGroups.includes('sysop') || requesterGroups.includes('bot')
+      if (!canCreate) {
+        throw forbiddenError()
+      }
+
+      const { data, issues } = validateWorkflowCreatePayload(request.body)
+      if (data === null) {
+        await reply.code(400).send({ error: 'INVALID_WORKFLOW', issues })
+        return
+      }
+
+      const created = await prisma.workflow.create({
+        data: {
+          name: data.name,
+          isPrivate: data.isPrivate,
+          enabled: data.enabled,
+          triggers: data.triggers as Prisma.InputJsonValue,
+          definition: data.definition as unknown as Prisma.InputJsonValue,
+          userId: request.user?.id ?? null
+        }
+      })
+
+      await fastify.diContainer.cradle.notification.sendMessage({ type: 'WORKFLOW_EVENTBUS_UPDATE' })
+
+      await reply.send({ workflow: created })
     }
   })
 
@@ -121,6 +157,59 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
         workflow,
         instance
       }
+    }
+  })
+
+  fastify.route({
+    method: 'PUT',
+    url: '/api/workflow/:workflowId',
+    preHandler: userMiddleware(true),
+    handler: async (request: FastifyRequest<{ Params: { workflowId: string }; Body: unknown }>, reply) => {
+      const workflow = await prisma.workflow.findUnique({
+        where: { id: request.params.workflowId },
+        include: { user: true }
+      })
+      if (workflow === null) {
+        throw workflowNotFoundError()
+      }
+
+      const requester = request.user
+      const isOwner = requester?.id !== undefined && workflow.userId === requester.id
+      const isSysop = (requester?.groups ?? []).includes('sysop')
+      if (workflow.isPrivate) {
+        if (!isOwner) {
+          throw forbiddenError()
+        }
+      } else if (!isOwner && !isSysop) {
+        throw forbiddenError()
+      }
+
+      const { data, issues } = validateWorkflowUpdatePayload(request.body, {
+        name: workflow.name,
+        isPrivate: workflow.isPrivate,
+        enabled: workflow.enabled,
+        triggers: workflow.triggers as WorkflowTrigger[],
+        definition: workflow.definition as unknown as StateMachineDefinition
+      })
+      if (data === null) {
+        await reply.code(400).send({ error: 'INVALID_WORKFLOW', issues })
+        return
+      }
+
+      const updated = await prisma.workflow.update({
+        where: { id: workflow.id },
+        data: {
+          name: data.name,
+          isPrivate: data.isPrivate,
+          enabled: data.enabled,
+          triggers: data.triggers as Prisma.InputJsonValue,
+          definition: data.definition as unknown as Prisma.InputJsonValue
+        }
+      })
+
+      await fastify.diContainer.cradle.notification.sendMessage({ type: 'WORKFLOW_EVENTBUS_UPDATE' })
+
+      await reply.send({ workflow: updated })
     }
   })
 }

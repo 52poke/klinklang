@@ -46,89 +46,88 @@ export interface FailState {
 
 export type StateDefinition = TaskState | ChoiceState | PassState | SucceedState | FailState
 
-export type ChoiceRule =
-  & {
-    Next: string
+export type ChoiceRule = {
+  Next: string
+} & ChoiceRuleCondition
+
+export type ChoiceRuleCondition =
+  | {
+    Variable: string
+    StringEquals: string
   }
-  & (
-    | {
-      Variable: string
-      StringEquals: string
-    }
-    | {
-      Variable: string
-      StringMatches: string
-    }
-    | {
-      Variable: string
-      NumericEquals: number
-    }
-    | {
-      Variable: string
-      NumericEqualsPath: string
-    }
-    | {
-      Variable: string
-      NumericLessThan: number
-    }
-    | {
-      Variable: string
-      NumericLessThanPath: string
-    }
-    | {
-      Variable: string
-      NumericGreaterThan: number
-    }
-    | {
-      Variable: string
-      NumericGreaterThanPath: string
-    }
-    | {
-      Variable: string
-      NumericLessThanEquals: number
-    }
-    | {
-      Variable: string
-      NumericLessThanEqualsPath: string
-    }
-    | {
-      Variable: string
-      NumericGreaterThanEquals: number
-    }
-    | {
-      Variable: string
-      NumericGreaterThanEqualsPath: string
-    }
-    | {
-      Variable: string
-      BooleanEquals: boolean
-    }
-    | {
-      Variable: string
-      IsPresent: boolean
-    }
-    | {
-      Variable: string
-      IsNull: boolean
-    }
-    | {
-      Variable: string
-      IsString: boolean
-    }
-    | {
-      Variable: string
-      IsNumeric: boolean
-    }
-    | {
-      And: ChoiceRule[]
-    }
-    | {
-      Or: ChoiceRule[]
-    }
-    | {
-      Not: ChoiceRule
-    }
-  )
+  | {
+    Variable: string
+    StringMatches: string
+  }
+  | {
+    Variable: string
+    NumericEquals: number
+  }
+  | {
+    Variable: string
+    NumericEqualsPath: string
+  }
+  | {
+    Variable: string
+    NumericLessThan: number
+  }
+  | {
+    Variable: string
+    NumericLessThanPath: string
+  }
+  | {
+    Variable: string
+    NumericGreaterThan: number
+  }
+  | {
+    Variable: string
+    NumericGreaterThanPath: string
+  }
+  | {
+    Variable: string
+    NumericLessThanEquals: number
+  }
+  | {
+    Variable: string
+    NumericLessThanEqualsPath: string
+  }
+  | {
+    Variable: string
+    NumericGreaterThanEquals: number
+  }
+  | {
+    Variable: string
+    NumericGreaterThanEqualsPath: string
+  }
+  | {
+    Variable: string
+    BooleanEquals: boolean
+  }
+  | {
+    Variable: string
+    IsPresent: boolean
+  }
+  | {
+    Variable: string
+    IsNull: boolean
+  }
+  | {
+    Variable: string
+    IsString: boolean
+  }
+  | {
+    Variable: string
+    IsNumeric: boolean
+  }
+  | {
+    And: ChoiceRuleCondition[]
+  }
+  | {
+    Or: ChoiceRuleCondition[]
+  }
+  | {
+    Not: ChoiceRuleCondition
+  }
 
 export function getState (definition: StateMachineDefinition, stateName: string): StateDefinition {
   const state = definition.States[stateName]
@@ -160,7 +159,7 @@ function getNumericPathValue (context: Record<string, unknown>, path: string): n
   return typeof value === 'number' ? value : null
 }
 
-function evaluateChoiceRule (rule: ChoiceRule, context: Record<string, unknown>): boolean {
+function evaluateChoiceRule (rule: ChoiceRule | ChoiceRuleCondition, context: Record<string, unknown>): boolean {
   if ('And' in rule) {
     return rule.And.every(entry => evaluateChoiceRule(entry, context))
   }
