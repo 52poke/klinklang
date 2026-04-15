@@ -126,7 +126,7 @@ importers:
     dependencies:
       '@fastify/awilix':
         specifier: ^8.2.0
-        version: 8.2.0(awilix@12.0.5)(fastify@5.8.3)
+        version: 8.2.0(awilix@12.0.5)(fastify@5.8.5)
       '@fastify/cookie':
         specifier: ^11.0.2
         version: 11.0.2
@@ -185,8 +185,8 @@ importers:
         specifier: ^14.25.1
         version: 14.25.1
       fastify:
-        specifier: ^5.8.3
-        version: 5.8.3
+        specifier: ^5.8.5
+        version: 5.8.5
       handlebars:
         specifier: ^4.7.8
         version: 4.7.8
@@ -2280,8 +2280,8 @@ packages:
   fastify-plugin@5.1.0:
     resolution: {integrity: sha512-FAIDA8eovSt5qcDgcBvDuX/v0Cjz0ohGhENZ/wpc3y+oZCY2afZ9Baqql3g/lC+OHRnciQol4ww7tuthOb9idw==}
 
-  fastify@5.8.3:
-    resolution: {integrity: sha512-XJXpRQ41+rsJ/GLeP9vyDC+fBXilcTlEXokMSexkdEkla4uf7ZQNaI5xl3el+kW5TZQulqYxLr659ey/KX7XmQ==}
+  fastify@5.8.5:
+    resolution: {integrity: sha512-Yqptv59pQzPgQUSIm87hMqHJmdkb1+GPxdE6vW6FRyVE9G86mt7rOghitiU4JHRaTyDUk9pfeKmDeu70lAwM4Q==}
 
   fastq@1.19.1:
     resolution: {integrity: sha512-GwLTyxkCXjXbxqIhTsMI2Nui8huMPtnxg7krajPJAjnEG/iiOS7i+zCtWGZR9G0NBKbXKh6X9m9UIsYX/N6vvQ==}
@@ -4258,11 +4258,11 @@ snapshots:
       ajv-formats: 3.0.1(ajv@8.18.0)
       fast-uri: 3.1.0
 
-  '@fastify/awilix@8.2.0(awilix@12.0.5)(fastify@5.8.3)':
+  '@fastify/awilix@8.2.0(awilix@12.0.5)(fastify@5.8.5)':
     dependencies:
       awilix: 12.0.5
       awilix-manager: 6.3.0(awilix@12.0.5)
-      fastify: 5.8.3
+      fastify: 5.8.5
       fastify-plugin: 5.1.0
 
   '@fastify/cookie@11.0.2':
@@ -6089,7 +6089,7 @@ snapshots:
 
   fastify-plugin@5.1.0: {}
 
-  fastify@5.8.3:
+  fastify@5.8.5:
     dependencies:
       '@fastify/ajv-compiler': 4.0.5
       '@fastify/error': 4.2.0
