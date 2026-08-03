@@ -1,8 +1,49 @@
 import { diContainer } from '@fastify/awilix'
 import type { EditRequest, EditResponse } from '../lib/mediawiki/api.ts'
 import type MediaWikiClient from '../lib/mediawiki/client.ts'
+import { z } from 'zod'
 import { ActionWorker } from './base.ts'
 import type { Actions } from './interfaces.ts'
+
+export const getHTMLInputSchema = z.object({
+  title: z.string().min(1),
+  variants: z.array(z.enum(['zh-hans', 'zh-hant'])).optional()
+}).strict()
+
+export const getHTMLOutputSchema = z.object({
+  text: z.string(),
+  variants: z.object({
+    'zh-hans': z.string().optional(),
+    'zh-hant': z.string().optional()
+  }).strict().optional()
+}).strict()
+
+export const getTextInputSchema = z.object({
+  title: z.string().min(1)
+}).strict()
+
+export const getTextOutputSchema = z.object({
+  text: z.string()
+}).strict()
+
+export const editWikiInputSchema = z.looseObject({
+  title: z.string().min(1).optional(),
+  pageid: z.number().int().positive().optional()
+}).refine(input => input.title !== undefined || input.pageid !== undefined, {
+  message: 'title or pageid is required'
+})
+
+export const editWikiOutputSchema = z.looseObject({
+  edit: z.looseObject({
+    result: z.string(),
+    pageid: z.number().int(),
+    title: z.string(),
+    contentmodel: z.string(),
+    oldrevid: z.number().int(),
+    newrevid: z.number().int(),
+    newtimestamp: z.string()
+  })
+})
 
 export interface GetHTMLActionInput {
   title: string

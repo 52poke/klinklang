@@ -1,8 +1,36 @@
 import { diContainer } from '@fastify/awilix'
 import type { PrismaPromise } from '@mudkipme/klinklang-prisma'
 import { load } from 'cheerio'
+import { z } from 'zod'
 import { ActionWorker } from './base.ts'
 import type { GetHTMLActionOutput } from './wiki.ts'
+
+const terminologyTextsSchema = z.record(z.string(), z.string())
+
+export const parseTerminologyInputSchema = z.object({
+  text: z.string(),
+  variants: z.object({
+    'zh-hans': z.string().optional(),
+    'zh-hant': z.string().optional()
+  }).strict().optional(),
+  entrySelector: z.string().min(1),
+  idSelector: z.string().min(1).optional(),
+  langSelectorMap: z.record(z.string(), z.string()).refine(map => typeof map.zh === 'string', {
+    message: 'langSelectorMap.zh is required'
+  })
+}).strict()
+
+export const parseTerminologyOutputSchema = z.array(z.object({
+  id: z.number().int(),
+  texts: terminologyTextsSchema
+}).strict())
+
+export const updateTerminologyInputSchema = z.object({
+  category: z.string().min(1),
+  list: parseTerminologyOutputSchema
+}).strict()
+
+export const updateTerminologyOutputSchema = z.null()
 
 export type ParseTerminologyListActionInput = GetHTMLActionOutput & {
   entrySelector: string

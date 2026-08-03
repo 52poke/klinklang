@@ -1,7 +1,20 @@
 import { diContainer } from '@fastify/awilix'
 import { TextChannel } from 'discord.js'
 import type { APIEmbed, MessageCreateOptions, MessagePayload } from 'discord.js'
+import { z } from 'zod'
 import { WikiWorker } from './wiki.ts'
+
+export const discordMessageInputSchema = z.object({
+  channel: z.string().min(1),
+  message: z.union([
+    z.string(),
+    z.record(z.string(), z.unknown())
+  ])
+}).strict()
+
+export const discordMessageOutputSchema = z.object({
+  id: z.string().min(1)
+}).strict()
 
 export interface DiscordMessageActionInput {
   channel: string

@@ -87,6 +87,20 @@ const config = convict({
       default: 6379
     }
   },
+  workflow: {
+    instanceRetentionSeconds: {
+      doc: 'Workflow instance retention in seconds',
+      format: 'int',
+      default: 30 * 24 * 60 * 60,
+      env: 'WORKFLOW_INSTANCE_RETENTION_SECONDS'
+    },
+    instanceHistoryLimit: {
+      doc: 'Maximum retained instances per workflow',
+      format: 'int',
+      default: 1000,
+      env: 'WORKFLOW_INSTANCE_HISTORY_LIMIT'
+    }
+  },
   kafka: {
     brokers: {
       doc: 'Kafka broker list',

@@ -1,5 +1,15 @@
 import * as sass from 'sass-embedded'
+import { z } from 'zod'
 import { ActionWorker } from './base.ts'
+
+export const scssInputSchema = z.object({
+  scss: z.string(),
+  variables: z.record(z.string(), z.union([z.string(), z.number()]))
+}).strict()
+
+export const scssOutputSchema = z.object({
+  css: z.string()
+}).strict()
 
 export interface SCSSActionInput {
   scss: string

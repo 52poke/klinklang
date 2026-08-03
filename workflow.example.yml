@@ -514,7 +514,7 @@ triggers:
     op: not
     apply:
     - op: test
-      path: performer.user_is_bot
+      path: /performer/user_is_bot
       value: true
 definition:
   StartAt: DISCORD_MESSAGE_1

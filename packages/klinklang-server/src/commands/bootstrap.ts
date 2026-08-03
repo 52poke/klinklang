@@ -4,6 +4,7 @@ import yaml from 'js-yaml'
 import { readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Config } from '../lib/config.ts'
+import { validateWorkflowCreatePayload } from '../lib/workflow-validation.ts'
 import type { StateMachineDefinition } from '../models/asl.ts'
 import type { WorkflowTrigger } from '../models/workflow-type.ts'
 
@@ -17,9 +18,20 @@ export interface WorkflowConfig {
 }
 
 export async function setupWorkflow (prisma: PrismaClient, workflowConfig: WorkflowConfig): Promise<void> {
+  const validation = validateWorkflowCreatePayload({
+    name: workflowConfig.name,
+    isPrivate: workflowConfig.isPrivate,
+    enabled: workflowConfig.enabled,
+    triggers: workflowConfig.triggers,
+    definition: workflowConfig.definition
+  })
+  if (validation.data === null) {
+    throw new Error(`Invalid bootstrap workflow "${workflowConfig.name}": ${validation.issues.join('; ')}`)
+  }
+
   let workflow = await prisma.workflow.findFirst({ where: { name: workflowConfig.name } })
 
-  const definition = workflowConfig.definition
+  const { definition, triggers } = validation.data
 
   if (workflow === null) {
     workflow = await prisma.workflow.create({
@@ -27,7 +39,7 @@ export async function setupWorkflow (prisma: PrismaClient, workflowConfig: Workf
         name: workflowConfig.name,
         isPrivate: workflowConfig.isPrivate,
         enabled: workflowConfig.enabled,
-        triggers: workflowConfig.triggers as Prisma.InputJsonValue,
+        triggers: triggers as Prisma.InputJsonValue,
         definition: definition as unknown as Prisma.InputJsonValue
       }
     })

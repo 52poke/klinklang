@@ -1,7 +1,17 @@
 import { diContainer } from '@fastify/awilix'
 import { omit } from 'lodash-es'
 import type { mastodon } from 'masto'
+import { z } from 'zod'
 import { ActionWorker } from './base.ts'
+
+export const fediPostInputSchema = z.looseObject({
+  subject: z.string().min(1),
+  status: z.string().optional()
+})
+
+export const fediPostOutputSchema = z.looseObject({
+  id: z.string().min(1)
+})
 
 export type FediPostActionInput = mastodon.rest.v1.CreateStatusParams & { subject: string }
 export type FediPostActionOutput = mastodon.v1.Status

@@ -1,4 +1,18 @@
+import { z } from 'zod'
 import { ActionWorker } from './base.ts'
+
+export const requestInputSchema = z.object({
+  method: z.string().min(1),
+  url: z.url(),
+  headers: z.record(z.string(), z.string()).optional(),
+  body: z.string().optional()
+}).strict()
+
+export const requestOutputSchema = z.object({
+  statusCode: z.number().int(),
+  headers: z.record(z.string(), z.string()),
+  body: z.string()
+}).strict()
 
 export interface RequestActionInput {
   method: string

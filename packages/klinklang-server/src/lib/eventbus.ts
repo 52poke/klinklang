@@ -12,6 +12,23 @@ import { createInstanceWithWorkflow } from '../models/workflow.ts'
 import type { Config } from './config.ts'
 import type { MessageType, Notification } from './notification.ts'
 
+export function buildTopicWorkflowMap (workflows: Workflow[]): Map<string, Workflow[]> {
+  const topics = new Map<string, Workflow[]>()
+  for (const workflow of workflows) {
+    for (const trigger of workflow.triggers as WorkflowTrigger[]) {
+      if (trigger.type !== 'TRIGGER_EVENTBUS') {
+        continue
+      }
+      const entries = topics.get(trigger.topic) ?? []
+      if (!entries.some(entry => entry.id === workflow.id)) {
+        entries.push(workflow)
+      }
+      topics.set(trigger.topic, entries)
+    }
+  }
+  return topics
+}
+
 export default class Subscriber {
   readonly #kafka: Kafka
   readonly #consumerConfig: ConsumerConfig
@@ -35,17 +52,7 @@ export default class Subscriber {
   }
 
   public async updateAndSubscribe (workflows: Workflow[]): Promise<void> {
-    const topics = new Map<string, Workflow[]>()
-
-    for (const workflow of workflows) {
-      for (const trigger of workflow.triggers as WorkflowTrigger[]) {
-        if (trigger.type === 'TRIGGER_EVENTBUS') {
-          const entries = topics.get(trigger.topic) ?? []
-          entries.push(workflow)
-          topics.set(trigger.topic, entries)
-        }
-      }
-    }
+    const topics = buildTopicWorkflowMap(workflows)
 
     await this.subscribe(Array.from(topics.keys()))
     this.#topics = topics
@@ -82,10 +89,10 @@ export default class Subscriber {
       return
     }
 
-    const triggered: Record<string, boolean> = {}
+    const triggered = new Set<string>()
     for (const workflow of workflows) {
-      if (triggered[workflow.id]) {
-        return
+      if (triggered.has(workflow.id)) {
+        continue
       }
       for (const trigger of workflow.triggers as WorkflowTrigger[]) {
         if (trigger.type !== 'TRIGGER_EVENTBUS' || trigger.topic !== topic) {
@@ -109,7 +116,7 @@ export default class Subscriber {
         }
 
         await createInstanceWithWorkflow(workflow, trigger, event)
-        triggered[workflow.id] = true
+        triggered.add(workflow.id)
         break
       }
     }

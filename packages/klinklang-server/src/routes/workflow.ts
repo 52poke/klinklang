@@ -1,6 +1,7 @@
 import type { Prisma } from '@mudkipme/klinklang-prisma'
 import type { FastifyPluginCallback, FastifyRequest } from 'fastify'
 import { forbiddenError, workflowNotFoundError } from '../lib/errors.ts'
+import { parsePagination } from '../lib/pagination.ts'
 import userMiddleware from '../middlewares/user.ts'
 import type { StateMachineDefinition } from '../models/asl.ts'
 import type { WorkflowTrigger } from '../models/workflow-type.ts'
@@ -15,8 +16,7 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
     url: '/api/workflow',
     preHandler: userMiddleware(true),
     handler: async (request: FastifyRequest<{ Querystring: { offset?: string; limit?: string } }>, reply) => {
-      const offset = request.query.offset === undefined ? 0 : parseInt(request.query.offset, 10)
-      const limit = request.query.limit === undefined ? 20 : Math.max(parseInt(request.query.limit, 10), 200)
+      const { offset, limit } = parsePagination(request.query)
       const workflows = await prisma.workflow.findMany({
         skip: offset,
         take: limit,
@@ -103,7 +103,10 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
     url: '/api/workflow/:workflowId/instances',
     preHandler: userMiddleware(true),
     handler: async (
-      request: FastifyRequest<{ Querystring: { start?: string; stop?: string }; Params: { workflowId: string } }>
+      request: FastifyRequest<{
+        Querystring: { offset?: string; limit?: string; start?: string; stop?: string }
+        Params: { workflowId: string }
+      }>
     ) => {
       const workflow = await prisma.workflow.findUnique({ where: { id: request.params.workflowId } })
       if (workflow === null) {
@@ -112,9 +115,11 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
       if (!canViewWorkflow(workflow, request.user?.id)) {
         throw forbiddenError()
       }
-      const start = request.query.start === undefined ? 0 : parseInt(request.query.start, 10)
-      const stop = request.query.stop === undefined ? 20 : Math.max(parseInt(request.query.stop, 10), 200)
-      const instances = await getWorkflowInstances(workflow, start, stop)
+      const { offset, limit } = parsePagination({
+        offset: request.query.offset ?? request.query.start,
+        limit: request.query.limit ?? request.query.stop
+      })
+      const instances = await getWorkflowInstances(workflow, offset, limit)
       return {
         instances
       }

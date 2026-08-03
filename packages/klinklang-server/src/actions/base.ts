@@ -1,6 +1,7 @@
 import { diContainer } from '@fastify/awilix'
 import type { User, Workflow } from '@mudkipme/klinklang-prisma'
 import type { Job } from 'bullmq'
+import type { ZodType } from 'zod'
 import WorkflowInstance from '../models/workflow-instance.ts'
 import type { ActionJobData, ActionJobResult, Actions } from './interfaces.ts'
 
@@ -38,13 +39,13 @@ export abstract class ActionWorker<T extends Actions> {
     return workflow
   }
 
-  public async handleJob (): Promise<ActionJobResult<T>> {
+  public async handleJob (outputSchema: ZodType): Promise<ActionJobResult<T>> {
     const instance = await this.getInstance()
     if (instance === null) {
       throw new Error('WORKFLOW_INSTANCE_NOT_FOUND')
     }
     await instance.started(this.jobId, this.stateName)
-    const output = await this.process()
+    const output = outputSchema.parse(await this.process()) as T['output']
     await instance.update(this.stateName, output)
     const transition = await instance.createNextJob<T>(this.stateName)
     if (transition.status === 'completed') {

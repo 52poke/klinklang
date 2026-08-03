@@ -11,8 +11,8 @@ export function canViewWorkflow (
   return !workflow.isPrivate || (userId !== undefined && workflow.userId === userId)
 }
 
-export async function getWorkflowInstances (workflow: Workflow, start = 0, stop = 100): Promise<WorkflowInstance[]> {
-  return await WorkflowInstance.getInstancesOfWorkflow(workflow.id, start, stop)
+export async function getWorkflowInstances (workflow: Workflow, offset = 0, limit = 100): Promise<WorkflowInstance[]> {
+  return await WorkflowInstance.getInstancesOfWorkflow(workflow.id, offset, limit)
 }
 
 export async function createInstanceWithWorkflow (

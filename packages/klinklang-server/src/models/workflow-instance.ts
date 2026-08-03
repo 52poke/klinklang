@@ -21,6 +21,10 @@ export interface WorkflowInstanceData {
   context: Record<string, unknown>
 }
 
+interface WorkflowInstanceStorageData extends WorkflowInstanceData {
+  definition?: StateMachineDefinition
+}
+
 export type WorkflowTransition<T extends Actions> =
   | {
     status: 'scheduled'
@@ -44,7 +48,7 @@ class WorkflowInstance {
   public readonly trigger?: WorkflowTrigger
   #definition?: StateMachineDefinition
 
-  private constructor (data: WorkflowInstanceData) {
+  private constructor (data: WorkflowInstanceStorageData) {
     this.workflowId = data.workflowId
     this.instanceId = data.instanceId
     this.firstJobId = data.firstJobId
@@ -56,6 +60,7 @@ class WorkflowInstance {
     this.completedAt = data.completedAt === undefined ? undefined : new Date(data.completedAt)
     this.context = data.context
     this.trigger = data.trigger
+    this.#definition = data.definition
   }
 
   public toJSON (): WorkflowInstanceData {
@@ -75,11 +80,23 @@ class WorkflowInstance {
   }
 
   public async save (): Promise<void> {
-    const { redis } = diContainer.cradle
-    const data = this.toJSON()
+    const { config, redis } = diContainer.cradle
+    const workflowConfig = config.get('workflow')
+    const retentionSeconds = Math.max(1, workflowConfig.instanceRetentionSeconds)
+    const historyLimit = Math.max(1, workflowConfig.instanceHistoryLimit)
+    const instanceKey = `workflow-instance:${this.workflowId}:${this.instanceId}`
+    const indexKey = `workflow-instances:${this.workflowId}`
+    const now = Date.now()
+    const data: WorkflowInstanceStorageData = {
+      ...this.toJSON(),
+      definition: this.#definition
+    }
+    await redis.zadd(indexKey, now, this.instanceId)
     await Promise.all([
-      redis.set(`workflow-instance:${this.workflowId}:${this.instanceId}`, JSON.stringify(data)),
-      redis.zadd(`workflow-instances:${this.workflowId}`, Date.now(), this.instanceId)
+      redis.set(instanceKey, JSON.stringify(data), 'EX', retentionSeconds),
+      redis.zremrangebyscore(indexKey, '-inf', now - retentionSeconds * 1000),
+      redis.zremrangebyrank(indexKey, 0, -historyLimit - 1),
+      redis.expire(indexKey, retentionSeconds)
     ])
   }
 
@@ -197,7 +214,7 @@ class WorkflowInstance {
     if (startState.Type === 'Succeed' || startState.Type === 'Fail') {
       const instanceId = randomUUID()
       const jobId = randomUUID()
-      const data: WorkflowInstanceData = {
+      const data: WorkflowInstanceStorageData = {
         workflowId: workflow.id,
         instanceId,
         firstJobId: jobId,
@@ -206,7 +223,8 @@ class WorkflowInstance {
         createdAt: Date.now(),
         completedAt: Date.now(),
         trigger,
-        context
+        context,
+        definition
       }
       const instance = new WorkflowInstance(data)
       await instance.save()
@@ -221,7 +239,7 @@ class WorkflowInstance {
       stateName: startName
     }
     const jobId = randomUUID()
-    const data: WorkflowInstanceData = {
+    const data: WorkflowInstanceStorageData = {
       workflowId: workflow.id,
       instanceId,
       firstJobId: jobId,
@@ -229,7 +247,8 @@ class WorkflowInstance {
       status: 'pending',
       createdAt: Date.now(),
       trigger,
-      context
+      context,
+      definition
     }
     const instance = new WorkflowInstance(data)
     await instance.save()
@@ -245,17 +264,24 @@ class WorkflowInstance {
 
   public static async getInstancesOfWorkflow (
     workflowId: string,
-    start: number,
-    stop: number
+    offset: number,
+    limit: number
   ): Promise<WorkflowInstance[]> {
     const { redis } = diContainer.cradle
-    const instanceIds = await redis.zrevrange(`workflow-instances:${workflowId}`, start, stop)
+    const indexKey = `workflow-instances:${workflowId}`
+    const start = Math.max(0, offset)
+    const stop = start + Math.max(1, limit) - 1
+    const instanceIds = await redis.zrevrange(indexKey, start, stop)
     if (instanceIds.length === 0) {
       return []
     }
     const instances = await redis.mget(...instanceIds.map(id => `workflow-instance:${workflowId}:${id}`))
+    const missingIds = instanceIds.filter((_, index) => instances[index] === null)
+    if (missingIds.length > 0) {
+      await redis.zrem(indexKey, ...missingIds)
+    }
     return instances.filter(instance => instance !== null).map(data =>
-      new WorkflowInstance(JSON.parse(data) as WorkflowInstanceData)
+      new WorkflowInstance(JSON.parse(data) as WorkflowInstanceStorageData)
     )
   }
 
@@ -265,7 +291,7 @@ class WorkflowInstance {
     if (instance === null) {
       return null
     }
-    return new WorkflowInstance(JSON.parse(instance) as WorkflowInstanceData)
+    return new WorkflowInstance(JSON.parse(instance) as WorkflowInstanceStorageData)
   }
 
   private async getDefinition (): Promise<StateMachineDefinition> {

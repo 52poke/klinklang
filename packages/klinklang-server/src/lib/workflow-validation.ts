@@ -1,14 +1,21 @@
 import { CronExpressionParser } from 'cron-parser'
 import { z } from 'zod'
+import { validateActionInput } from '../actions/register.ts'
 import { SUPPORTED_ACTION_TYPES } from '../actions/supported.ts'
 import { choiceRuleSchema } from './workflow-choice-schema.ts'
 import type { StateMachineDefinition } from '../models/asl.ts'
 import type { WorkflowTrigger } from '../models/workflow-type.ts'
+import {
+  eventPredicateSchema,
+  validateChoiceConditionPaths,
+  validateJSONPath,
+  validateParameterPaths
+} from './workflow-runtime-validation.ts'
 
 const eventBusTriggerSchema = z.object({
   type: z.literal('TRIGGER_EVENTBUS'),
   topic: z.string().min(1),
-  predicate: z.unknown().optional(),
+  predicate: eventPredicateSchema.optional(),
   throttle: z.number().int().positive().optional(),
   throttleKeyPath: z.string().min(1).optional()
 }).strict().superRefine((trigger: z.infer<typeof eventBusTriggerSchema>, context) => {
@@ -220,12 +227,24 @@ function validateTriggers (triggers: WorkflowTrigger[]): string[] {
       } catch {
         issues.push(`triggers.${index}.pattern: invalid cron pattern`)
       }
+    } else if (trigger.type === 'TRIGGER_EVENTBUS') {
+      validateJSONPath(trigger.throttleKeyPath, `triggers.${index}.throttleKeyPath`, issues)
     }
   })
   return issues
 }
 
 const SUPPORTED_ACTION_TYPE_SET = new Set<string>(SUPPORTED_ACTION_TYPES)
+
+function hasDynamicParameter (value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.some(hasDynamicParameter)
+  }
+  if (value === null || typeof value !== 'object') {
+    return false
+  }
+  return Object.entries(value).some(([key, entry]) => key.endsWith('.$') || hasDynamicParameter(entry))
+}
 
 function validateStateMachineDefinition (definition: StateMachineDefinition): string[] {
   const issues: string[] = []
@@ -257,11 +276,31 @@ function validateStateMachineDefinition (definition: StateMachineDefinition): st
       case 'Task': {
         if (!SUPPORTED_ACTION_TYPE_SET.has(state.Resource)) {
           issues.push(`States.${stateName}.Resource: unsupported resource ${state.Resource}`)
+        } else if (state.Parameters !== undefined && !hasDynamicParameter(state.Parameters)) {
+          const inputIssues = validateActionInput(
+            state.Resource as (typeof SUPPORTED_ACTION_TYPES)[number],
+            state.Parameters
+          )
+          issues.push(...inputIssues.map(issue => `States.${stateName}.Parameters.${issue}`))
         }
+        validateJSONPath(state.InputPath, `States.${stateName}.InputPath`, issues)
+        validateJSONPath(state.OutputPath, `States.${stateName}.OutputPath`, issues)
+        if (state.ResultPath !== undefined && state.ResultPath !== null
+          && !/^\$(?:\.[^.\[\]]+)*$/v.test(state.ResultPath)) {
+          issues.push(`States.${stateName}.ResultPath: unsupported result path`)
+        }
+        validateParameterPaths(state.Parameters, `States.${stateName}.Parameters`, issues)
         validateNextOrEnd(stateName, state, addEdge, issues)
         break
       }
       case 'Pass': {
+        validateJSONPath(state.InputPath, `States.${stateName}.InputPath`, issues)
+        validateJSONPath(state.OutputPath, `States.${stateName}.OutputPath`, issues)
+        if (state.ResultPath !== undefined && state.ResultPath !== null
+          && !/^\$(?:\.[^.\[\]]+)*$/v.test(state.ResultPath)) {
+          issues.push(`States.${stateName}.ResultPath: unsupported result path`)
+        }
+        validateParameterPaths(state.Parameters, `States.${stateName}.Parameters`, issues)
         validateNextOrEnd(stateName, state, addEdge, issues)
         break
       }
@@ -269,6 +308,11 @@ function validateStateMachineDefinition (definition: StateMachineDefinition): st
         for (let index = 0; index < state.Choices.length; index += 1) {
           const choice = state.Choices[index] as { Next: string }
           addEdge(stateName, choice.Next, `States.${stateName}.Choices.${index}.Next`)
+          validateChoiceConditionPaths(
+            choice as unknown as Record<string, unknown>,
+            `States.${stateName}.Choices.${index}`,
+            issues
+          )
         }
         if (state.Default !== undefined) {
           addEdge(stateName, state.Default, `States.${stateName}.Default`)
