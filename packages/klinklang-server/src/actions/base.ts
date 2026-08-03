@@ -46,13 +46,15 @@ export abstract class ActionWorker<T extends Actions> {
     await instance.started(this.jobId, this.stateName)
     const output = await this.process()
     await instance.update(this.stateName, output)
-    const nextJob = await instance.createNextJob(this.stateName)
-    if (nextJob === null) {
+    const transition = await instance.createNextJob<T>(this.stateName)
+    if (transition.status === 'completed') {
       await instance.complete()
+    } else if (transition.status === 'failed') {
+      await instance.fail()
     }
     return {
       output,
-      nextJobId: nextJob?.id
+      nextJobId: transition.status === 'scheduled' ? transition.job.id : undefined
     }
   }
 

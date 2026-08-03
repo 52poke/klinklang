@@ -7,7 +7,20 @@ const userMiddleware = <T extends RouteGenericInterface>(requireLogin: boolean) 
       try {
         const user = await request.diScope.resolve('prisma').user.findUnique({
           where: { id: request.session.userId },
-          include: { fediAccounts: true }
+          select: {
+            id: true,
+            name: true,
+            wikiId: true,
+            groups: true,
+            createdAt: true,
+            updatedAt: true,
+            fediAccounts: {
+              select: {
+                id: true,
+                subject: true
+              }
+            }
+          }
         })
         if (user === null) {
           if (requireLogin) {

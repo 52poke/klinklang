@@ -4,7 +4,7 @@ import { forbiddenError, workflowNotFoundError } from '../lib/errors.ts'
 import userMiddleware from '../middlewares/user.ts'
 import type { StateMachineDefinition } from '../models/asl.ts'
 import type { WorkflowTrigger } from '../models/workflow-type.ts'
-import { createInstanceWithWorkflow, getWorkflowInstances } from '../models/workflow.ts'
+import { canViewWorkflow, createInstanceWithWorkflow, getWorkflowInstances } from '../models/workflow.ts'
 import { validateWorkflowCreatePayload, validateWorkflowUpdatePayload } from '../lib/workflow-validation.ts'
 
 const workflowRoutes: FastifyPluginCallback = (fastify) => {
@@ -78,6 +78,9 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
       if (workflow === null) {
         throw workflowNotFoundError()
       }
+      if (!canViewWorkflow(workflow, request.user?.id)) {
+        throw forbiddenError()
+      }
       const definition = workflow.definition as unknown as StateMachineDefinition
       return {
         definition,
@@ -106,6 +109,9 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
       if (workflow === null) {
         throw workflowNotFoundError()
       }
+      if (!canViewWorkflow(workflow, request.user?.id)) {
+        throw forbiddenError()
+      }
       const start = request.query.start === undefined ? 0 : parseInt(request.query.start, 10)
       const stop = request.query.stop === undefined ? 20 : Math.max(parseInt(request.query.stop, 10), 200)
       const instances = await getWorkflowInstances(workflow, start, stop)
@@ -121,8 +127,7 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
     preHandler: userMiddleware(true),
     handler: async (request: FastifyRequest<{ Params: { workflowId: string }; Body?: { payload?: unknown } }>) => {
       const workflow = await prisma.workflow.findUnique({
-        where: { id: request.params.workflowId },
-        include: { user: true }
+        where: { id: request.params.workflowId }
       })
       if (workflow === null) {
         throw workflowNotFoundError()
@@ -141,8 +146,7 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
       }
 
       if (workflow.isPrivate) {
-        const workflowOwner = workflow.user
-        if (workflowOwner === null || workflowOwner.id !== request.user?.id) {
+        if (workflow.userId === null || workflow.userId !== request.user?.id) {
           throw forbiddenError()
         }
       }

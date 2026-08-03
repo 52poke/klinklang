@@ -123,8 +123,8 @@ export class FediverseService {
   }
 
   async revoke (userId: string, fediAccountId: string): Promise<void> {
-    const fediAccount = await this.#prisma.fediAccount.findUnique({
-      where: { id: fediAccountId },
+    const fediAccount = await this.#prisma.fediAccount.findFirst({
+      where: { id: fediAccountId, userId },
       include: { fediInstance: true }
     })
     if (fediAccount === null) {

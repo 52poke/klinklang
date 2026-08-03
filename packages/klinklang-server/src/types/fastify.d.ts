@@ -1,4 +1,3 @@
-import type { User } from '@mudkipme/klinklang-prisma'
 import type { Queue, Worker } from 'bullmq'
 import type { Client } from 'discord.js'
 import type { Redis } from 'ioredis'
@@ -7,6 +6,7 @@ import type { Config } from '../lib/config.ts'
 import type { PrismaClient } from '../lib/database.ts'
 import type { Notification } from '../lib/notification.ts'
 import type { MediaWikiOAuth } from '../lib/oauth.ts'
+import type { AuthenticatedUser } from '../models/user.ts'
 import type { FediverseService } from '../services/fediverse.ts'
 import type { TerminologyService } from '../services/terminology.ts'
 import type { TranslationService } from '../services/translation.ts'
@@ -19,7 +19,7 @@ declare module 'fastify' {
   }
 
   interface FastifyRequest {
-    user: User | null
+    user: AuthenticatedUser | null
   }
 }
 

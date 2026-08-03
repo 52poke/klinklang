@@ -21,6 +21,15 @@ export interface WorkflowInstanceData {
   context: Record<string, unknown>
 }
 
+export type WorkflowTransition<T extends Actions> =
+  | {
+    status: 'scheduled'
+    job: Job<ActionJobData<T>, ActionJobResult<T>>
+  }
+  | {
+    status: 'completed' | 'failed'
+  }
+
 class WorkflowInstance {
   public readonly workflowId: string
   public readonly instanceId: string
@@ -102,7 +111,7 @@ class WorkflowInstance {
 
   public async createNextJob<T extends Actions> (
     currentStateName: string
-  ): Promise<Job<ActionJobData<T>, ActionJobResult<T>> | null> {
+  ): Promise<WorkflowTransition<T>> {
     const { queue } = diContainer.cradle
     const definition = await this.getDefinition()
     const current = getState(definition, currentStateName)
@@ -125,8 +134,11 @@ class WorkflowInstance {
           stateName: nextName
         }
         const jobId = randomUUID()
-        const job = await queue.add(nextState.Resource, jobData, { jobId })
-        return job
+        const job = await queue.add(nextState.Resource, jobData, { jobId }) as Job<
+          ActionJobData<T>,
+          ActionJobResult<T>
+        >
+        return { status: 'scheduled', job }
       }
       if (nextState.Type === 'Pass') {
         this.context = applyPassState(nextState, this.context)
@@ -140,15 +152,13 @@ class WorkflowInstance {
       }
       switch (nextState.Type) {
         case 'Succeed':
-          await this.complete()
-          return null
+          return { status: 'completed' }
         case 'Fail':
-          await this.fail()
-          return null
+          return { status: 'failed' }
       }
       throw new Error('UNSUPPORTED_STATE_TYPE')
     }
-    return null
+    return { status: 'completed' }
   }
 
   public static async create (
@@ -211,8 +221,6 @@ class WorkflowInstance {
       stateName: startName
     }
     const jobId = randomUUID()
-    await diContainer.cradle.queue.add(startState.Resource, jobData, { jobId })
-
     const data: WorkflowInstanceData = {
       workflowId: workflow.id,
       instanceId,
@@ -225,6 +233,13 @@ class WorkflowInstance {
     }
     const instance = new WorkflowInstance(data)
     await instance.save()
+
+    try {
+      await diContainer.cradle.queue.add(startState.Resource, jobData, { jobId })
+    } catch (error) {
+      await instance.fail()
+      throw error
+    }
     return instance
   }
 

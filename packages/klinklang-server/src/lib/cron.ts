@@ -21,6 +21,10 @@ interface CronSchedulerDeps {
 }
 
 const LOCK_TTL_SECONDS = 60
+export const MAX_TIMER_DELAY_MS = 2_147_483_647
+
+export const getTimerDelay = (delayMs: number): number => Math.min(delayMs, MAX_TIMER_DELAY_MS)
+
 export class CronScheduler {
   readonly #timers = new Map<string, NodeJS.Timeout>()
   readonly #deps: CronSchedulerDeps
@@ -65,8 +69,13 @@ export class CronScheduler {
     }
 
     const timer = setTimeout(() => {
+      if (delayMs > MAX_TIMER_DELAY_MS) {
+        this.#timers.delete(key)
+        this.scheduleNext(entry)
+        return
+      }
       void this.runTrigger(entry)
-    }, delayMs)
+    }, getTimerDelay(delayMs))
     this.#timers.set(key, timer)
   }
 

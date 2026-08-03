@@ -22,7 +22,7 @@ export default [
     languageOptions: {
       ...love.languageOptions,
       parserOptions: {
-        project: ['./packages/*/tsconfig.json']
+        project: ['./packages/*/tsconfig.json', './packages/*/tsconfig.test.json']
       }
     },
     rules: {

@@ -8,7 +8,7 @@ RUN npm i pnpm -g
 COPY . /app
 RUN pnpm install
 
-ENV NODE_ENV production
+ENV NODE_ENV=production
 RUN pnpm build
 
 EXPOSE 3000

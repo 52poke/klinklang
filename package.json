@@ -7,6 +7,7 @@
   "scripts": {
     "format": "eslint . --fix",
     "lint": "eslint .",
+    "test": "pnpm run -r test",
     "start": "pnpm run -r --parallel start",
     "serve": "pnpm --filter @mudkipme/klinklang-server run --stream serve",
     "build": "pnpm run -r build"

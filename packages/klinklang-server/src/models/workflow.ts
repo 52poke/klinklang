@@ -4,6 +4,13 @@ import { getState, resolveChoiceNext } from './asl.ts'
 import WorkflowInstance from './workflow-instance.ts'
 import type { WorkflowTrigger } from './workflow-type.ts'
 
+export function canViewWorkflow (
+  workflow: Pick<Workflow, 'isPrivate' | 'userId'>,
+  userId?: string
+): boolean {
+  return !workflow.isPrivate || (userId !== undefined && workflow.userId === userId)
+}
+
 export async function getWorkflowInstances (workflow: Workflow, start = 0, stop = 100): Promise<WorkflowInstance[]> {
   return await WorkflowInstance.getInstancesOfWorkflow(workflow.id, start, stop)
 }
