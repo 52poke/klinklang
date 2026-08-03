@@ -46,7 +46,7 @@
     "fastify": "^5.8.3",
     "handlebars": "^4.7.9",
     "ioredis": "^5.9.1",
-    "js-yaml": "^4.1.1",
+    "js-yaml": "^4.3.0",
     "json-predicate": "^0.9.5",
     "jsonpath-plus": "^10.3.0",
     "jsonwebtoken": "^9.0.3",
