@@ -41,7 +41,6 @@ export type ParseTerminologyListActionInput = GetHTMLActionOutput & {
 export type ParseTerminologyListOutput = Array<{ id: number; texts: Record<string, string> }>
 
 export interface ParseTerminologyListAction {
-  actionType: 'PARSE_TERMINOLOGY_LIST'
   input: ParseTerminologyListActionInput
   output: ParseTerminologyListOutput
 }
@@ -112,7 +111,6 @@ export interface UpdateTerminologyActionInput {
 }
 
 export interface UpdateTerminologyAction {
-  actionType: 'UPDATE_TERMINOLOGY'
   input: UpdateTerminologyActionInput
   output: null
 }

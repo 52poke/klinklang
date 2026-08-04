@@ -2,12 +2,12 @@ import { diContainer } from '@fastify/awilix'
 import type { User, Workflow } from '@mudkipme/klinklang-prisma'
 import type { Job } from 'bullmq'
 import type { ZodType } from 'zod'
-import WorkflowInstance from '../models/workflow-instance.ts'
-import type { ActionJobData, ActionJobResult, Actions } from './interfaces.ts'
+import type WorkflowInstance from '../models/workflow-instance.ts'
+import type { ActionContract, ActionJobData, ActionJobResult } from './interfaces.ts'
 
-export type WorkerType<T extends Actions> = new(job: Job<ActionJobData<T>, ActionJobResult<T>>) => ActionWorker<T>
+export type WorkerType<T extends ActionContract> = new(job: Job<ActionJobData<T>, ActionJobResult<T>>) => ActionWorker<T>
 
-export abstract class ActionWorker<T extends Actions> {
+export abstract class ActionWorker<T extends ActionContract> {
   protected readonly jobId?: string
   protected readonly input: T['input']
   protected readonly workflowId: string
@@ -24,6 +24,7 @@ export abstract class ActionWorker<T extends Actions> {
   }
 
   protected async getInstance (): Promise<WorkflowInstance | null> {
+    const { default: WorkflowInstance } = await import('../models/workflow-instance.ts')
     return await WorkflowInstance.getInstance(this.workflowId, this.instanceId)
   }
 

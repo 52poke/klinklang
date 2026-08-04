@@ -26,7 +26,6 @@ export interface DiscordMessageActionOutput {
 }
 
 export interface DiscordMessageAction {
-  actionType: 'DISCORD_MESSAGE'
   input: DiscordMessageActionInput
   output: DiscordMessageActionOutput
 }

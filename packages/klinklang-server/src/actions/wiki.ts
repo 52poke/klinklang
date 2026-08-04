@@ -3,7 +3,7 @@ import type { EditRequest, EditResponse } from '../lib/mediawiki/api.ts'
 import type MediaWikiClient from '../lib/mediawiki/client.ts'
 import { z } from 'zod'
 import { ActionWorker } from './base.ts'
-import type { Actions } from './interfaces.ts'
+import type { ActionContract } from './interfaces.ts'
 
 export const getHTMLInputSchema = z.object({
   title: z.string().min(1),
@@ -56,12 +56,11 @@ export interface GetHTMLActionOutput {
 }
 
 export interface GetHTMLAction {
-  actionType: 'GET_HTML'
   input: GetHTMLActionInput
   output: GetHTMLActionOutput
 }
 
-export abstract class WikiWorker<T extends Actions> extends ActionWorker<T> {
+export abstract class WikiWorker<T extends ActionContract> extends ActionWorker<T> {
   readonly #wikiClient?: MediaWikiClient
   protected async getWikiClient (): Promise<MediaWikiClient> {
     const { wikiService } = diContainer.cradle
@@ -111,7 +110,6 @@ export interface GetTextActionOutput {
 }
 
 export interface GetTextAction {
-  actionType: 'GET_TEXT'
   input: GetTextActionInput
   output: GetTextActionOutput
 }
@@ -138,7 +136,6 @@ export type EditWikiActionInput = EditRequest
 export type EditWikiActionOutput = EditResponse
 
 export interface EditWikiAction {
-  actionType: 'EDIT_WIKI'
   input: EditWikiActionInput
   output: EditWikiActionOutput
 }

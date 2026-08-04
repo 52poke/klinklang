@@ -7,8 +7,7 @@ import {
   type WorkflowTrigger
 } from '@mudkipme/klinklang-domain'
 import { CronExpressionParser } from 'cron-parser'
-import { validateActionInput } from '../actions/register.ts'
-import { SUPPORTED_ACTION_TYPES } from '../actions/supported.ts'
+import { isActionType, validateActionInput } from '../actions/register.ts'
 import {
   validateChoiceConditionPaths,
   validateJSONPath,
@@ -111,8 +110,6 @@ function validateTriggers (triggers: WorkflowTrigger[]): string[] {
   return issues
 }
 
-const SUPPORTED_ACTION_TYPE_SET = new Set<string>(SUPPORTED_ACTION_TYPES)
-
 function hasDynamicParameter (value: unknown): boolean {
   if (Array.isArray(value)) {
     return value.some(hasDynamicParameter)
@@ -151,11 +148,11 @@ function validateStateMachineDefinition (definition: StateMachineDefinition): st
   for (const [stateName, state] of Object.entries(states)) {
     switch (state.Type) {
       case 'Task': {
-        if (!SUPPORTED_ACTION_TYPE_SET.has(state.Resource)) {
+        if (!isActionType(state.Resource)) {
           issues.push(`States.${stateName}.Resource: unsupported resource ${state.Resource}`)
         } else if (state.Parameters !== undefined && !hasDynamicParameter(state.Parameters)) {
           const inputIssues = validateActionInput(
-            state.Resource as (typeof SUPPORTED_ACTION_TYPES)[number],
+            state.Resource,
             state.Parameters
           )
           issues.push(...inputIssues.map(issue => `States.${stateName}.Parameters.${issue}`))

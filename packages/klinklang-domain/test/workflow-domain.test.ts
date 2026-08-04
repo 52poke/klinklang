@@ -3,6 +3,7 @@ import { describe, test } from 'node:test'
 import {
   eventPredicateSchema,
   getStateTransitions,
+  choiceRuleSchema,
   workflowCreateRequestSchema,
   workflowDetailResponseSchema,
   workflowMetadataSchema
@@ -78,5 +79,19 @@ void describe('workflow domain schemas', () => {
       { kind: 'default', target: 'Rejected' }
     ])
     deepEqual(getStateTransitions({ Type: 'Fail', Error: 'REJECTED' }), [])
+  })
+
+  void test('extends recursive choice conditions with Next only at the top level', () => {
+    ok(choiceRuleSchema.safeParse({
+      And: [
+        { Variable: '$.kind', StringEquals: 'article' },
+        { Not: { Variable: '$.archived', BooleanEquals: true } }
+      ],
+      Next: 'Publish'
+    }).success)
+    equal(choiceRuleSchema.safeParse({
+      And: [{ Variable: '$.kind', StringEquals: 'article', Next: 'Nested' }],
+      Next: 'Publish'
+    }).success, false)
   })
 })

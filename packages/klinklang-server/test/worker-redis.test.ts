@@ -1,7 +1,7 @@
 import { diContainer } from '@fastify/awilix'
 import type { Workflow } from '@mudkipme/klinklang-prisma'
 import { asValue } from 'awilix'
-import type { Job, Queue } from 'bullmq'
+import type { Job, JobsOptions, Queue } from 'bullmq'
 import type { Redis } from 'ioredis'
 import { deepEqual, equal, ok } from 'node:assert/strict'
 import { beforeEach, describe, test } from 'node:test'
@@ -16,6 +16,7 @@ interface QueuedJob<T> {
   id: string
   name: string
   data: T
+  opts: JobsOptions
 }
 
 const workflowId = '00000000-0000-4000-8000-000000000020'
@@ -67,10 +68,13 @@ void describe('worker and Redis integration', () => {
     redis = new InMemoryRedis()
     queuedJobs = []
     const queue = {
-      add: async (name: string, data: ActionJobData<RegExpAction>, options: { jobId: string }) => {
+      add: async (name: string, data: ActionJobData<RegExpAction>, options: JobsOptions) => {
         await Promise.resolve()
+        if (typeof options.jobId !== 'string') {
+          throw new Error('jobId is required')
+        }
         const job = { id: options.jobId, name, data }
-        queuedJobs.push(job)
+        queuedJobs.push({ ...job, opts: options })
         return job
       }
     }
@@ -99,6 +103,8 @@ void describe('worker and Redis integration', () => {
     equal(instance.status, 'pending')
     equal(queuedJobs.length, 1)
     equal(queuedJobs[0].name, 'REGEXP_MATCH')
+    equal(queuedJobs[0].opts.attempts, 2)
+    deepEqual(queuedJobs[0].opts.backoff, { type: 'fixed', delay: 250 })
     deepEqual(queuedJobs[0].data.input, { text: 'answer: 42', pattern: '\\d+' })
 
     const queued = queuedJobs[0]

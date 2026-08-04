@@ -10,7 +10,8 @@ import type { Workflow } from '@mudkipme/klinklang-prisma'
 import type { Job } from 'bullmq'
 import { randomUUID } from 'node:crypto'
 import type { z } from 'zod'
-import type { ActionJobData, ActionJobResult, Actions } from '../actions/interfaces.ts'
+import type { ActionContract, ActionJobData, ActionJobResult } from '../actions/interfaces.ts'
+import { getActionJobOptions } from '../actions/register.ts'
 import {
   applyPassState,
   applyStateOutput,
@@ -26,7 +27,7 @@ const workflowInstanceStorageSchema = workflowInstanceSchema.extend({
 })
 type WorkflowInstanceStorageData = z.infer<typeof workflowInstanceStorageSchema>
 
-export type WorkflowTransition<T extends Actions> =
+export type WorkflowTransition<T extends ActionContract> =
   | {
     status: 'scheduled'
     job: Job<ActionJobData<T>, ActionJobResult<T>>
@@ -108,7 +109,7 @@ class WorkflowInstance {
     await this.save()
   }
 
-  public async update (currentStateName: string, output: Actions['output']): Promise<void> {
+  public async update (currentStateName: string, output: ActionContract['output']): Promise<void> {
     const definition = await this.getDefinition()
     const state = getTaskState(definition, currentStateName)
     this.context = applyStateOutput(state, this.context, output)
@@ -127,7 +128,7 @@ class WorkflowInstance {
     await this.save()
   }
 
-  public async createNextJob<T extends Actions> (
+  public async createNextJob<T extends ActionContract> (
     currentStateName: string
   ): Promise<WorkflowTransition<T>> {
     const { queue } = diContainer.cradle
@@ -143,14 +144,18 @@ class WorkflowInstance {
     }
     if (transition.status === 'task') {
       const jobData: ActionJobData<T> = {
-        actionType: transition.state.Resource as T['actionType'],
-        input: buildStateInput(transition.state, this.context) as T['input'],
+        actionType: transition.state.Resource,
+        input: buildStateInput(transition.state, this.context),
         workflowId: this.workflowId,
         instanceId: this.instanceId,
         stateName: transition.name
       }
       const jobId = randomUUID()
-      const job = await queue.add(transition.state.Resource, jobData, { jobId }) as Job<
+      const job = await queue.add(
+        transition.state.Resource,
+        jobData,
+        getActionJobOptions(transition.state.Resource, jobId)
+      ) as Job<
         ActionJobData<T>,
         ActionJobResult<T>
       >
@@ -195,16 +200,20 @@ class WorkflowInstance {
       return instance
     }
 
-    const jobData: ActionJobData<Actions> = {
-      actionType: transition.state.Resource as Actions['actionType'],
-      input: buildStateInput(transition.state, transition.context) as Actions['input'],
+    const jobData: ActionJobData<ActionContract> = {
+      actionType: transition.state.Resource,
+      input: buildStateInput(transition.state, transition.context),
       workflowId: workflow.id,
       instanceId,
       stateName: transition.name
     }
 
     try {
-      await diContainer.cradle.queue.add(transition.state.Resource, jobData, { jobId })
+      await diContainer.cradle.queue.add(
+        transition.state.Resource,
+        jobData,
+        getActionJobOptions(transition.state.Resource, jobId)
+      )
     } catch (error) {
       await instance.fail()
       throw error

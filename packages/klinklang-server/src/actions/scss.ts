@@ -21,7 +21,6 @@ export interface SCSSActionOutput {
 }
 
 export interface SCSSAction {
-  actionType: 'SCSS_COMPILE'
   input: SCSSActionInput
   output: SCSSActionOutput
 }

@@ -28,7 +28,6 @@ export interface RequestActionOutput {
 }
 
 export interface RequestAction {
-  actionType: 'REQUEST'
   input: RequestActionInput
   output: RequestActionOutput
 }

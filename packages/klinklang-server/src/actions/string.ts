@@ -35,7 +35,6 @@ export interface RegExpActionOutput {
 }
 
 export interface RegExpAction {
-  actionType: 'REGEXP_MATCH'
   input: RegExpActionInput
   output: RegExpActionOutput
 }

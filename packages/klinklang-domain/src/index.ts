@@ -126,7 +126,7 @@ export type ChoiceRuleCondition =
   | { Or: ChoiceRuleCondition[] }
   | { Not: ChoiceRuleCondition }
 
-const choiceRuleConditionSchema: z.ZodType<ChoiceRuleCondition> = z.lazy(() => z.union([
+export const choiceRuleConditionSchema: z.ZodType<ChoiceRuleCondition> = z.lazy(() => z.union([
   z.object({ Variable: z.string().min(1), StringEquals: z.string() }).strict(),
   z.object({ Variable: z.string().min(1), StringMatches: z.string() }).strict(),
   z.object({ Variable: z.string().min(1), NumericEquals: z.number() }).strict(),
@@ -149,30 +149,21 @@ const choiceRuleConditionSchema: z.ZodType<ChoiceRuleCondition> = z.lazy(() => z
   z.object({ Not: choiceRuleConditionSchema }).strict()
 ]))
 
-const nextSchema = { Next: z.string().min(1) }
-export const choiceRuleSchema = z.union([
-  z.object({ ...nextSchema, Variable: z.string().min(1), StringEquals: z.string() }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), StringMatches: z.string() }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), NumericEquals: z.number() }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), NumericEqualsPath: z.string().min(1) }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), NumericLessThan: z.number() }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), NumericLessThanPath: z.string().min(1) }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), NumericGreaterThan: z.number() }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), NumericGreaterThanPath: z.string().min(1) }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), NumericLessThanEquals: z.number() }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), NumericLessThanEqualsPath: z.string().min(1) }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), NumericGreaterThanEquals: z.number() }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), NumericGreaterThanEqualsPath: z.string().min(1) }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), BooleanEquals: z.boolean() }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), IsPresent: z.boolean() }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), IsNull: z.boolean() }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), IsString: z.boolean() }).strict(),
-  z.object({ ...nextSchema, Variable: z.string().min(1), IsNumeric: z.boolean() }).strict(),
-  z.object({ ...nextSchema, And: z.array(choiceRuleConditionSchema).min(1) }).strict(),
-  z.object({ ...nextSchema, Or: z.array(choiceRuleConditionSchema).min(1) }).strict(),
-  z.object({ ...nextSchema, Not: choiceRuleConditionSchema }).strict()
-])
-export type ChoiceRule = z.infer<typeof choiceRuleSchema>
+export type ChoiceRule = ChoiceRuleCondition & { Next: string }
+
+export const choiceRuleSchema: z.ZodType<ChoiceRule> = z.object({
+  Next: z.string().min(1)
+}).loose().transform((value, context) => {
+  const { Next, ...condition } = value
+  const parsed = choiceRuleConditionSchema.safeParse(condition)
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      context.addIssue({ ...issue, path: issue.path })
+    }
+    return z.NEVER
+  }
+  return { ...parsed.data, Next }
+})
 
 export const taskStateSchema = z.object({
   Type: z.literal('Task'),

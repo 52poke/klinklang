@@ -17,7 +17,6 @@ export type FediPostActionInput = mastodon.rest.v1.CreateStatusParams & { subjec
 export type FediPostActionOutput = mastodon.v1.Status
 
 export interface FediPostAction {
-  actionType: 'FEDI_POST'
   input: FediPostActionInput
   output: FediPostActionOutput
 }
