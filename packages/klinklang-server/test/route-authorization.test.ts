@@ -105,7 +105,7 @@ void describe('workflow route authorization', () => {
       await Promise.resolve()
       const header = request.headers['x-test-user']
       const userId = typeof header === 'string' ? header : undefined
-      // eslint-disable-next-line @typescript-eslint/consistent-type-assertions, no-param-reassign -- test session stub
+      // oxlint-disable-next-line typescript/consistent-type-assertions, no-param-reassign -- test session stub
       request.session = { userId } as FastifyRequest['session']
     })
     await app.register(workflowRoutes)

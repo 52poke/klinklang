@@ -121,7 +121,7 @@ export class GetTextWorker extends WikiWorker<GetTextAction> {
     let text = ''
     if (
       response.query.pages.length > 0 && response.query.pages[0].revisions.length > 0
-      // eslint-disable-next-line @typescript-eslint/no-unnecessary-condition -- slots is record
+      // oxlint-disable-next-line typescript/no-unnecessary-condition -- slots is record
       && response.query.pages[0].revisions[0].slots.main !== undefined
     ) {
       text = response.query.pages[0].revisions[0].slots.main.content

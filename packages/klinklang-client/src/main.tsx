@@ -47,7 +47,7 @@ const router = createBrowserRouter([
   }
 ])
 
-// eslint-disable-next-line @typescript-eslint/no-non-null-assertion -- root element is always present
+// oxlint-disable-next-line typescript/no-non-null-assertion -- root element is always present
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <RouterProvider router={router} />

@@ -10,3 +10,9 @@ allowBuilds:
 
 onlyBuiltDependencies:
   - prisma
+
+minimumReleaseAgeExclude:
+  - dompurify@3.4.12
+
+overrides:
+  dompurify@<=3.4.11: ^3.4.12

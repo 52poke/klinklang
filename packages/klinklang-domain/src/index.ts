@@ -66,7 +66,7 @@ export const eventPredicateSchema: z.ZodType<EventPredicate> = z.lazy(() => z.lo
       if (!safeRegex(regex)) {
         context.addIssue({ code: 'custom', message: 'unsafe regular expression', path: ['value'] })
       }
-    } catch {
+    } catch (error) {
       context.addIssue({ code: 'custom', message: 'invalid regular expression', path: ['value'] })
     }
   }

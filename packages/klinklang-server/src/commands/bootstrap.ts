@@ -70,7 +70,9 @@ export default async function bootstrap ({ config, prisma }: { config: Config; p
 
     const content = await readFile(filename, { encoding: 'utf-8' })
     const workflows: unknown[] = []
-    yaml.loadAll(content, workflow => workflows.push(workflow))
+    yaml.loadAll(content, workflow => {
+      workflows.push(workflow)
+    })
     await Promise.all(workflows.map(async input => {
       await setupWorkflow(prisma, workflowConfigSchema.parse(input))
     }))

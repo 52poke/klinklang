@@ -100,7 +100,7 @@ function validateTriggers (triggers: WorkflowTrigger[]): string[] {
     if (trigger.type === 'TRIGGER_CRON') {
       try {
         CronExpressionParser.parse(trigger.pattern)
-      } catch {
+      } catch (error) {
         issues.push(`triggers.${index}.pattern: invalid cron pattern`)
       }
     } else if (trigger.type === 'TRIGGER_EVENTBUS') {

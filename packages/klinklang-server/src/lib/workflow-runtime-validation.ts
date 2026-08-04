@@ -41,7 +41,7 @@ export function isValidJSONPath (path: string): boolean {
   try {
     JSONPath({ json: {}, path, eval: false })
     return true
-  } catch {
+  } catch (error) {
     return false
   }
 }
@@ -108,7 +108,7 @@ export function validateChoiceConditionPaths (
       if (!safeRegex(regex)) {
         issues.push(`${path}.StringMatches: unsafe regular expression`)
       }
-    } catch {
+    } catch (error) {
       issues.push(`${path}.StringMatches: invalid regular expression`)
     }
   }

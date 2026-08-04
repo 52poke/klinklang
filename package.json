@@ -5,17 +5,18 @@
     "packages/*"
   ],
   "scripts": {
-    "format": "eslint . --fix",
-    "lint": "eslint .",
+    "preformat": "pnpm --filter @mudkipme/klinklang-domain build",
+    "format": "oxlint --type-aware --fix .",
+    "prelint": "pnpm --filter @mudkipme/klinklang-domain build",
+    "lint": "oxlint --type-aware --report-unused-disable-directives .",
     "test": "pnpm run -r test",
     "start": "pnpm run -r --parallel start",
     "serve": "pnpm --filter @mudkipme/klinklang-server run --stream serve",
     "build": "pnpm run -r build"
   },
   "devDependencies": {
-    "eslint": "^9.39.2",
-    "eslint-config-love": "^145.0.0",
-    "eslint-plugin-react-hooks": "^7.0.1",
-    "typescript": "^5.9.3"
+    "oxlint": "^1.76.0",
+    "oxlint-tsgolint": "^7.0.2001",
+    "typescript": "^7.0.2"
   }
 }

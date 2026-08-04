@@ -3,7 +3,6 @@
   "include": ["./src", "vite.config.ts", "tailwind.config.ts"],
   "exclude": ["node_modules", "**/node_modules/**"],
   "compilerOptions": {
-    "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
       "@mudkipme/klinklang-domain": ["../klinklang-domain/src/index.ts"]

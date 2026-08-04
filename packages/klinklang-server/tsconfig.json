@@ -2,8 +2,10 @@
   "extends": "../../tsconfig.json",
   "include": ["./src"],
   "compilerOptions": {
+    "types": ["node"],
     "module": "nodenext",
     "moduleResolution": "nodenext",
+    "rootDir": "src",
     "outDir": "dist",
     "allowImportingTsExtensions": true,
     "rewriteRelativeImportExtensions": true

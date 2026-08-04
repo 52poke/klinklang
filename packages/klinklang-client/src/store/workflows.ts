@@ -66,7 +66,7 @@ export const useWorkflowListStore = create<WorkflowListState>((set, get) => ({
         try {
           const payload: unknown = JSON.parse(payloadText)
           payloadBody = { payload }
-        } catch {
+        } catch (error) {
           set((state) => ({
             payloadErrors: { ...state.payloadErrors, [workflowId]: 'Invalid JSON payload.' }
           }))

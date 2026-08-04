@@ -176,7 +176,7 @@ void test('workflow validation rejects invalid predicates and JSONPath expressio
 })
 
 void test('action schemas reject invalid runtime inputs before worker execution', async () => {
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- construct the minimal Job surface read by processAction
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- construct the minimal Job surface read by processAction
   const job = {
     id: 'invalid-job',
     data: {
@@ -307,7 +307,7 @@ void test('workflow instance is persisted before enqueue and remains failed at a
   equal(JSON.stringify(instance).includes('definition'), false)
 
   // The worker only reads id and data; using a complete BullMQ Job would require a live queue.
-  // eslint-disable-next-line @typescript-eslint/consistent-type-assertions -- construct the minimal Job surface read by ActionWorker
+  // oxlint-disable-next-line typescript/consistent-type-assertions -- construct the minimal Job surface read by ActionWorker
   const job = {
     id: instance.firstJobId,
     data: {

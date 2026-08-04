@@ -12,7 +12,7 @@ export const regexpInputSchema = z.object({
     if (!safe(regex)) {
       context.addIssue({ code: 'custom', message: 'unsafe regular expression', path: ['pattern'] })
     }
-  } catch {
+  } catch (error) {
     context.addIssue({ code: 'custom', message: 'invalid regular expression', path: ['pattern'] })
   }
 })

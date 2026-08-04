@@ -85,7 +85,7 @@ export const Translate: React.FC = () => {
             if (data.text !== undefined) {
               setResult(prev => prev + data.text)
             }
-          } catch {
+          } catch (error) {
             // ignore malformed chunks
           }
         }

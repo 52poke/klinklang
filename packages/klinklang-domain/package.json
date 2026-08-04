@@ -18,13 +18,13 @@
     "test": "node --import tsx --test test/*.test.ts"
   },
   "dependencies": {
-    "jsonpath-plus": "^10.3.0",
+    "jsonpath-plus": "^10.4.0",
     "safe-regex": "^2.1.1",
-    "zod": "^4.3.6"
+    "zod": "^4.4.3"
   },
   "devDependencies": {
-    "@types/node": "^25.0.8",
+    "@types/node": "^26.1.2",
     "@types/safe-regex": "^1.1.6",
-    "tsx": "^4.21.0"
+    "tsx": "^4.23.5"
   }
 }
