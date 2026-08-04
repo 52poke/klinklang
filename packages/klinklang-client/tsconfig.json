@@ -5,7 +5,8 @@
   "compilerOptions": {
     "baseUrl": ".",
     "paths": {
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
+      "@mudkipme/klinklang-domain": ["../klinklang-domain/src/index.ts"]
     },
     "noEmit": true,
     "module": "esnext",

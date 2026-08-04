@@ -1,3 +1,4 @@
+import { jsonValueSchema } from '@mudkipme/klinklang-domain'
 import type { PrismaClient, Workflow } from '@mudkipme/klinklang-prisma'
 import type { Redis } from 'ioredis'
 import { test as jsonTest } from 'json-predicate'
@@ -7,7 +8,7 @@ import { isEqual } from 'lodash-es'
 import { createHash } from 'node:crypto'
 import type { Logger } from 'pino'
 import { setTimeout } from 'node:timers/promises'
-import type { WorkflowTrigger } from '../models/workflow-type.ts'
+import { parseWorkflowTriggers } from '../models/workflow-data.ts'
 import { createInstanceWithWorkflow } from '../models/workflow.ts'
 import type { Config } from './config.ts'
 import type { MessageType, Notification } from './notification.ts'
@@ -15,7 +16,7 @@ import type { MessageType, Notification } from './notification.ts'
 export function buildTopicWorkflowMap (workflows: Workflow[]): Map<string, Workflow[]> {
   const topics = new Map<string, Workflow[]>()
   for (const workflow of workflows) {
-    for (const trigger of workflow.triggers as WorkflowTrigger[]) {
+    for (const trigger of parseWorkflowTriggers(workflow)) {
       if (trigger.type !== 'TRIGGER_EVENTBUS') {
         continue
       }
@@ -82,7 +83,7 @@ export default class Subscriber {
     if (data === undefined) {
       return
     }
-    const event = JSON.parse(data) as object
+    const event = jsonValueSchema.parse(JSON.parse(data))
     const workflows = this.#topics.get(topic)
 
     if (workflows === undefined) {
@@ -94,7 +95,7 @@ export default class Subscriber {
       if (triggered.has(workflow.id)) {
         continue
       }
-      for (const trigger of workflow.triggers as WorkflowTrigger[]) {
+      for (const trigger of parseWorkflowTriggers(workflow)) {
         if (trigger.type !== 'TRIGGER_EVENTBUS' || trigger.topic !== topic) {
           continue
         }

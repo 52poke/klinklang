@@ -1,11 +1,20 @@
+import {
+  workflowDetailResponseSchema,
+  workflowInstancesResponseSchema,
+  workflowListResponseSchema,
+  workflowMutationResponseSchema,
+  workflowTriggerResponseSchema,
+  type WorkflowCreateRequest,
+  type WorkflowTriggerRequest,
+  type WorkflowUpdateRequest
+} from '@mudkipme/klinklang-domain'
 import type { Prisma } from '@mudkipme/klinklang-prisma'
 import type { FastifyPluginCallback, FastifyRequest } from 'fastify'
 import { forbiddenError, workflowNotFoundError } from '../lib/errors.ts'
 import { parsePagination } from '../lib/pagination.ts'
 import userMiddleware from '../middlewares/user.ts'
-import type { StateMachineDefinition } from '../models/asl.ts'
-import type { WorkflowTrigger } from '../models/workflow-type.ts'
 import { canViewWorkflow, createInstanceWithWorkflow, getWorkflowInstances } from '../models/workflow.ts'
+import { parseWorkflowDefinition, parseWorkflowTriggers, toWorkflowMetadata } from '../models/workflow-data.ts'
 import { validateWorkflowCreatePayload, validateWorkflowUpdatePayload } from '../lib/workflow-validation.ts'
 
 const workflowRoutes: FastifyPluginCallback = (fastify) => {
@@ -27,9 +36,9 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
           ]
         }
       })
-      await reply.send({
-        workflows
-      })
+      await reply.send(workflowListResponseSchema.parse({
+        workflows: workflows.map(toWorkflowMetadata)
+      }))
     }
   })
 
@@ -37,7 +46,7 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
     method: 'POST',
     url: '/api/workflow',
     preHandler: userMiddleware(true),
-    handler: async (request: FastifyRequest<{ Body: unknown }>, reply) => {
+    handler: async (request: FastifyRequest<{ Body: WorkflowCreateRequest }>, reply) => {
       const requesterGroups = request.user?.groups ?? []
       const canCreate = requesterGroups.includes('sysop') || requesterGroups.includes('bot')
       if (!canCreate) {
@@ -63,7 +72,7 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
 
       await fastify.diContainer.cradle.notification.sendMessage({ type: 'WORKFLOW_EVENTBUS_UPDATE' })
 
-      await reply.send({ workflow: created })
+      await reply.send(workflowMutationResponseSchema.parse({ workflow: toWorkflowMetadata(created) }))
     }
   })
 
@@ -81,20 +90,11 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
       if (!canViewWorkflow(workflow, request.user?.id)) {
         throw forbiddenError()
       }
-      const definition = workflow.definition as unknown as StateMachineDefinition
-      return {
+      const definition = parseWorkflowDefinition(workflow)
+      return workflowDetailResponseSchema.parse({
         definition,
-        workflow: {
-          id: workflow.id,
-          name: workflow.name,
-          isPrivate: workflow.isPrivate,
-          enabled: workflow.enabled,
-          triggers: workflow.triggers,
-          createdAt: workflow.createdAt,
-          updatedAt: workflow.updatedAt,
-          userId: workflow.userId
-        }
-      }
+        workflow: toWorkflowMetadata(workflow)
+      })
     }
   })
 
@@ -120,9 +120,9 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
         limit: request.query.limit ?? request.query.stop
       })
       const instances = await getWorkflowInstances(workflow, offset, limit)
-      return {
-        instances
-      }
+      return workflowInstancesResponseSchema.parse({
+        instances: instances.map(instance => instance.toJSON())
+      })
     }
   })
 
@@ -130,7 +130,10 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
     method: 'POST',
     url: '/api/workflow/:workflowId/trigger',
     preHandler: userMiddleware(true),
-    handler: async (request: FastifyRequest<{ Params: { workflowId: string }; Body?: { payload?: unknown } }>) => {
+    handler: async (request: FastifyRequest<{
+      Params: { workflowId: string }
+      Body?: WorkflowTriggerRequest
+    }>) => {
       const workflow = await prisma.workflow.findUnique({
         where: { id: request.params.workflowId }
       })
@@ -138,7 +141,7 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
         throw workflowNotFoundError()
       }
 
-      const supportsManualTrigger = (workflow.triggers as WorkflowTrigger[])
+      const supportsManualTrigger = parseWorkflowTriggers(workflow)
         .find(trigger => trigger.type === 'TRIGGER_MANUAL')
       if (supportsManualTrigger === undefined) {
         throw forbiddenError()
@@ -162,10 +165,10 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
 
       const instance = await createInstanceWithWorkflow(workflow, supportsManualTrigger, request.body?.payload)
 
-      return {
-        workflow,
-        instance
-      }
+      return workflowTriggerResponseSchema.parse({
+        workflow: toWorkflowMetadata(workflow),
+        instance: instance.toJSON()
+      })
     }
   })
 
@@ -173,7 +176,10 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
     method: 'PUT',
     url: '/api/workflow/:workflowId',
     preHandler: userMiddleware(true),
-    handler: async (request: FastifyRequest<{ Params: { workflowId: string }; Body: unknown }>, reply) => {
+    handler: async (request: FastifyRequest<{
+      Params: { workflowId: string }
+      Body: WorkflowUpdateRequest
+    }>, reply) => {
       const workflow = await prisma.workflow.findUnique({
         where: { id: request.params.workflowId },
         include: { user: true }
@@ -197,8 +203,8 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
         name: workflow.name,
         isPrivate: workflow.isPrivate,
         enabled: workflow.enabled,
-        triggers: workflow.triggers as WorkflowTrigger[],
-        definition: workflow.definition as unknown as StateMachineDefinition
+        triggers: parseWorkflowTriggers(workflow),
+        definition: parseWorkflowDefinition(workflow)
       })
       if (data === null) {
         await reply.code(400).send({ error: 'INVALID_WORKFLOW', issues })
@@ -218,7 +224,7 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
 
       await fastify.diContainer.cradle.notification.sendMessage({ type: 'WORKFLOW_EVENTBUS_UPDATE' })
 
-      await reply.send({ workflow: updated })
+      await reply.send(workflowMutationResponseSchema.parse({ workflow: toWorkflowMetadata(updated) }))
     }
   })
 }

@@ -1,3 +1,4 @@
+import type { StateMachineDefinition, WorkflowMetadata } from '@mudkipme/klinklang-domain'
 import React, { useState } from 'react'
 import { Button } from '../../components/ui/button'
 import {
@@ -8,15 +9,13 @@ import {
   DialogTitle,
   DialogTrigger
 } from '../../components/ui/dialog'
-import type { StateMachineDefinition } from './definition'
-import type { WorkflowMetaData } from './WorkflowMeta'
 import { WorkflowEditPanel } from './WorkflowEditPanel'
 
 interface WorkflowEditDialogProps {
   workflowId: string
-  workflow: WorkflowMetaData
+  workflow: WorkflowMetadata
   definition: StateMachineDefinition
-  onUpdated: (workflow: WorkflowMetaData, definition: StateMachineDefinition) => void
+  onUpdated: (workflow: WorkflowMetadata, definition: StateMachineDefinition) => void
 }
 
 export const WorkflowEditDialog: React.FC<WorkflowEditDialogProps> = ({
@@ -38,6 +37,7 @@ export const WorkflowEditDialog: React.FC<WorkflowEditDialogProps> = ({
           <DialogDescription>Update metadata, triggers, and definition.</DialogDescription>
         </DialogHeader>
         <WorkflowEditPanel
+          key={`${workflow.id}:${workflow.updatedAt}`}
           mode='edit'
           workflowId={workflowId}
           workflow={workflow}

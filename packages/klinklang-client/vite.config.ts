@@ -7,7 +7,8 @@ export default defineConfig({
   plugins: [tailwindcss(), react()],
   resolve: {
     alias: {
-      '@': fileURLToPath(new URL('./src', import.meta.url))
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      '@mudkipme/klinklang-domain': fileURLToPath(new URL('../klinklang-domain/src/index.ts', import.meta.url))
     }
   },
   server: {

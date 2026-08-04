@@ -1,20 +1,18 @@
+import {
+  workflowDetailResponseSchema,
+  workflowInstancesResponseSchema,
+  workflowListResponseSchema,
+  workflowTriggerResponseSchema,
+  type StateMachineDefinition,
+  type WorkflowInstance,
+  type WorkflowMetadata,
+  type WorkflowTriggerRequest
+} from '@mudkipme/klinklang-domain'
 import { create } from 'zustand'
-import type { StateMachineDefinition } from '../pages/Workflows/definition'
-import type { WorkflowMetaData } from '../pages/Workflows/WorkflowMeta'
-
-export interface WorkflowSummary {
-  id: string
-  name: string
-  isPrivate: boolean
-  enabled: boolean
-  triggers: unknown[]
-  createdAt: string
-  updatedAt: string
-  userId?: string | null
-}
+import { readJson } from '../lib/api'
 
 export interface WorkflowListState {
-  workflows: WorkflowSummary[]
+  workflows: WorkflowMetadata[]
   loading: boolean
   error: string | null
   triggering: Record<string, boolean>
@@ -26,7 +24,7 @@ export interface WorkflowListState {
   triggerWorkflow: (workflowId: string, payloadText?: string) => Promise<boolean>
   setDialogOpen: (workflowId: string, open: boolean) => void
   setPayloadDraft: (workflowId: string, value: string) => void
-  addWorkflow: (workflow: WorkflowSummary) => void
+  addWorkflow: (workflow: WorkflowMetadata) => void
 }
 
 export const useWorkflowListStore = create<WorkflowListState>((set, get) => ({
@@ -50,7 +48,7 @@ export const useWorkflowListStore = create<WorkflowListState>((set, get) => ({
         set({ error: `Failed to load workflows (HTTP ${response.status}).`, loading: false })
         return
       }
-      const data = await response.json() as { workflows: WorkflowSummary[] }
+      const data = workflowListResponseSchema.parse(await readJson(response))
       set({ workflows: data.workflows, loading: false })
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'Failed to load workflows.', loading: false })
@@ -63,10 +61,11 @@ export const useWorkflowListStore = create<WorkflowListState>((set, get) => ({
       payloadErrors: { ...state.payloadErrors, [workflowId]: '' }
     }))
     try {
-      let payloadBody: Record<string, unknown> | undefined = undefined
+      let payloadBody: WorkflowTriggerRequest | undefined = undefined
       if (payloadText !== undefined && payloadText.trim() !== '') {
         try {
-          payloadBody = { payload: JSON.parse(payloadText) as unknown }
+          const payload: unknown = JSON.parse(payloadText)
+          payloadBody = { payload }
         } catch {
           set((state) => ({
             payloadErrors: { ...state.payloadErrors, [workflowId]: 'Invalid JSON payload.' }
@@ -91,6 +90,7 @@ export const useWorkflowListStore = create<WorkflowListState>((set, get) => ({
         }))
         return false
       }
+      workflowTriggerResponseSchema.parse(await readJson(response))
       set((state) => ({
         lastTriggerResult: { ...state.lastTriggerResult, [workflowId]: 'Triggered' }
       }))
@@ -131,12 +131,12 @@ export const useWorkflowListStore = create<WorkflowListState>((set, get) => ({
 
 export interface WorkflowDetailState {
   workflowId: string | null
-  workflow: WorkflowMetaData | null
+  workflow: WorkflowMetadata | null
   definition: StateMachineDefinition | null
   loading: boolean
   error: string | null
   fetchDetail: (workflowId: string) => Promise<void>
-  setWorkflow: (workflow: WorkflowMetaData, definition: StateMachineDefinition) => void
+  setWorkflow: (workflow: WorkflowMetadata, definition: StateMachineDefinition) => void
   setError: (message: string | null) => void
   clear: () => void
 }
@@ -159,7 +159,7 @@ export const useWorkflowDetailStore = create<WorkflowDetailState>((set) => ({
         set({ error: `Failed to load workflow actions (HTTP ${response.status}).`, loading: false })
         return
       }
-      const data = await response.json() as { definition: StateMachineDefinition; workflow: WorkflowMetaData }
+      const data = workflowDetailResponseSchema.parse(await readJson(response))
       set({ definition: data.definition, workflow: data.workflow, loading: false })
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'Failed to load workflow actions.', loading: false })
@@ -175,19 +175,6 @@ export const useWorkflowDetailStore = create<WorkflowDetailState>((set) => ({
     set({ workflowId: null, workflow: null, definition: null, loading: false, error: null })
   }
 }))
-
-export interface WorkflowInstance {
-  workflowId: string
-  instanceId: string
-  firstJobId: string
-  currentJobId?: string
-  currentStateName?: string
-  status: 'pending' | 'running' | 'failed' | 'completed'
-  createdAt: number
-  startedAt?: number
-  completedAt?: number
-  trigger?: unknown
-}
 
 export interface WorkflowInstancesState {
   workflowId: string | null
@@ -216,7 +203,7 @@ export const useWorkflowInstancesStore = create<WorkflowInstancesState>((set) =>
         set({ error: `Failed to load workflow instances (HTTP ${response.status}).`, loading: false })
         return
       }
-      const data = await response.json() as { instances: WorkflowInstance[] }
+      const data = workflowInstancesResponseSchema.parse(await readJson(response))
       set({ instances: data.instances, loading: false })
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'Failed to load workflow instances.', loading: false })

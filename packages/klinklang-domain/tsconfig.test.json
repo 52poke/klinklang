@@ -1,0 +1,9 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["./src", "./test"],
+  "compilerOptions": {
+    "rootDir": ".",
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  }
+}

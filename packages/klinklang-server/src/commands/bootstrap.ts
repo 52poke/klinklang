@@ -1,21 +1,15 @@
+import { workflowCreateRequestSchema } from '@mudkipme/klinklang-domain'
 import type { Prisma, PrismaClient } from '@mudkipme/klinklang-prisma'
 import { findWorkspaceDir } from '@pnpm/find-workspace-dir'
 import yaml from 'js-yaml'
 import { readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
+import { z } from 'zod'
 import type { Config } from '../lib/config.ts'
 import { validateWorkflowCreatePayload } from '../lib/workflow-validation.ts'
-import type { StateMachineDefinition } from '../models/asl.ts'
-import type { WorkflowTrigger } from '../models/workflow-type.ts'
 
-export interface WorkflowConfig {
-  name: string
-  isPrivate: boolean
-  enabled: boolean
-  user?: string
-  triggers: WorkflowTrigger[]
-  definition: StateMachineDefinition
-}
+const workflowConfigSchema = workflowCreateRequestSchema.extend({ user: z.string().optional() })
+export type WorkflowConfig = z.infer<typeof workflowConfigSchema>
 
 export async function setupWorkflow (prisma: PrismaClient, workflowConfig: WorkflowConfig): Promise<void> {
   const validation = validateWorkflowCreatePayload({
@@ -75,9 +69,10 @@ export default async function bootstrap ({ config, prisma }: { config: Config; p
     }
 
     const content = await readFile(filename, { encoding: 'utf-8' })
-    const workflows = yaml.loadAll(content) as WorkflowConfig[]
-    await Promise.all(workflows.map(async workflowConfig => {
-      await setupWorkflow(prisma, workflowConfig)
+    const workflows: unknown[] = []
+    yaml.loadAll(content, workflow => workflows.push(workflow))
+    await Promise.all(workflows.map(async input => {
+      await setupWorkflow(prisma, workflowConfigSchema.parse(input))
     }))
   } catch (e) {
     process.stderr.write(`${e instanceof Error ? e.message : String(e)}\n`)

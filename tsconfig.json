@@ -6,6 +6,7 @@
     "moduleResolution": "nodenext",
     "esModuleInterop": true,
     "paths": {
+      "@mudkipme/klinklang-domain": ["packages/klinklang-domain/src/index.ts"],
       "@mudkipme/*": ["packages/*/src"]
     },
     "baseUrl": "./",

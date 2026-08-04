@@ -1,11 +1,19 @@
 import Editor from '@monaco-editor/react'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import {
+  stateMachineDefinitionSchema,
+  workflowMutationResponseSchema,
+  workflowValidationErrorResponseSchema,
+  type StateMachineDefinition,
+  type WorkflowCreateRequest,
+  type WorkflowMetadata,
+  type WorkflowUpdateRequest
+} from '@mudkipme/klinklang-domain'
+import React, { useCallback, useMemo, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import { Checkbox } from '../../components/ui/checkbox'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
-import type { StateMachineDefinition } from './definition'
-import type { WorkflowMetaData } from './WorkflowMeta'
+import { readJson } from '../../lib/api'
 import { TriggerEditor, buildTriggerPayloads, buildTriggerDrafts } from './WorkflowTriggerEditor'
 
 interface WorkflowFormState {
@@ -17,9 +25,9 @@ interface WorkflowFormState {
 interface WorkflowEditPanelProps {
   mode?: 'edit' | 'create'
   workflowId?: string
-  workflow: WorkflowMetaData
+  workflow: WorkflowMetadata
   definition: StateMachineDefinition
-  onUpdated: (workflow: WorkflowMetaData, definition: StateMachineDefinition) => void
+  onUpdated: (workflow: WorkflowMetadata, definition: StateMachineDefinition) => void
 }
 
 export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
@@ -47,20 +55,18 @@ export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
 
   const parseDefinition = useCallback((): StateMachineDefinition | null => {
     try {
-      return JSON.parse(definitionText) as StateMachineDefinition
+      const input: unknown = JSON.parse(definitionText)
+      const parsed = stateMachineDefinitionSchema.safeParse(input)
+      if (!parsed.success) {
+        setSaveError(parsed.error.issues.map(issue => `${issue.path.join('.')}: ${issue.message}`).join('\n'))
+        return null
+      }
+      return parsed.data
     } catch (error) {
       setSaveError(`Definition JSON is invalid: ${error instanceof Error ? error.message : 'Unknown error'}`)
       return null
     }
   }, [definitionText])
-
-  useEffect(() => {
-    setFormState(initialForm)
-    setDefinitionText(initialDefinitionText)
-    setTriggerDrafts(initialTriggers)
-    setSaveError(null)
-    setSaveSuccess(null)
-  }, [initialDefinitionText, initialForm, initialTriggers])
 
   const isDirty = useMemo(() => {
     if (formState.name !== initialForm.name) {
@@ -111,7 +117,7 @@ export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
       return
     }
 
-    const payload: Record<string, unknown> = {}
+    const payload: WorkflowUpdateRequest = {}
     if (formState.name !== initialForm.name) {
       payload.name = formState.name
     }
@@ -140,22 +146,21 @@ export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
 
     setSaving(true)
     try {
+      const requestPayload: WorkflowCreateRequest | WorkflowUpdateRequest = mode === 'create'
+        ? {
+            name: formState.name,
+            isPrivate: formState.isPrivate,
+            enabled: formState.enabled,
+            triggers: triggerResult.triggers,
+            definition: definitionPayload
+          }
+        : payload
       const response = await fetch(
         mode === 'create' ? '/api/workflow' : `/api/workflow/${workflowId}`,
         {
           method: mode === 'create' ? 'POST' : 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(
-            mode === 'create'
-              ? {
-                  name: formState.name,
-                  isPrivate: formState.isPrivate,
-                  enabled: formState.enabled,
-                  triggers: triggerResult.triggers,
-                  definition: definitionPayload
-                }
-              : payload
-          )
+          body: JSON.stringify(requestPayload)
         }
       )
       if (response.status === 401) {
@@ -167,15 +172,15 @@ export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
         return
       }
       if (!response.ok) {
-        const errorData = await response.json().catch(() => null) as { issues?: string[] | string; error?: string } | null
-        if (errorData?.issues !== undefined) {
-          setSaveError(Array.isArray(errorData.issues) ? errorData.issues.join('\n') : errorData.issues)
+        const errorData = workflowValidationErrorResponseSchema.safeParse(await readJson(response).catch(() => null))
+        if (errorData.success) {
+          setSaveError(errorData.data.issues.join('\n'))
           return
         }
-        setSaveError(errorData?.error ?? `Failed to update workflow (HTTP ${response.status}).`)
+        setSaveError(`Failed to update workflow (HTTP ${response.status}).`)
         return
       }
-      const data = await response.json() as { workflow: WorkflowMetaData }
+      const data = workflowMutationResponseSchema.parse(await readJson(response))
       onUpdated(data.workflow, definitionPayload)
       setSaveSuccess(mode === 'create' ? 'Workflow created.' : 'Workflow updated.')
     } catch (err) {

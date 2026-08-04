@@ -1,3 +1,4 @@
+import type { StateMachineDefinition, WorkflowMetadata } from '@mudkipme/klinklang-domain'
 import React, { useMemo, useState } from 'react'
 import { Button } from '../../components/ui/button'
 import {
@@ -8,13 +9,11 @@ import {
   DialogTitle,
   DialogTrigger
 } from '../../components/ui/dialog'
-import type { StateMachineDefinition } from './definition'
-import type { WorkflowMetaData } from './WorkflowMeta'
 import { WorkflowEditPanel } from './WorkflowEditPanel'
 
 interface WorkflowCreateDialogProps {
   userId?: string | null
-  onCreated: (workflow: WorkflowMetaData) => void
+  onCreated: (workflow: WorkflowMetadata) => void
 }
 
 const createDefaultDefinition = (): StateMachineDefinition => ({
@@ -29,7 +28,7 @@ const createDefaultDefinition = (): StateMachineDefinition => ({
 export const WorkflowCreateDialog: React.FC<WorkflowCreateDialogProps> = ({ userId, onCreated }) => {
   const [open, setOpen] = useState(false)
   const now = new Date().toISOString()
-  const defaultWorkflow: WorkflowMetaData = useMemo(() => ({
+  const defaultWorkflow: WorkflowMetadata = useMemo(() => ({
     id: '',
     name: '',
     isPrivate: false,
@@ -52,6 +51,7 @@ export const WorkflowCreateDialog: React.FC<WorkflowCreateDialogProps> = ({ user
           <DialogDescription>Define workflow metadata, triggers, and definition.</DialogDescription>
         </DialogHeader>
         <WorkflowEditPanel
+          key={`create:${userId ?? ''}`}
           mode='create'
           workflow={defaultWorkflow}
           definition={defaultDefinition}

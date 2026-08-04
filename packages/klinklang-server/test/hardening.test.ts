@@ -239,7 +239,7 @@ void test('Fediverse revocation checks ownership before external side effects', 
 })
 
 void test('workflow instance is persisted before enqueue and remains failed at a Fail state', async () => {
-  const workflowId = '00000000-0000-0000-0000-000000000001'
+  const workflowId = '00000000-0000-4000-8000-000000000001'
   const workflow: Workflow = {
     id: workflowId,
     name: 'Failure workflow',

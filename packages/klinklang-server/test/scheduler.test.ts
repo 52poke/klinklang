@@ -9,7 +9,7 @@ import type { PrismaClient } from '../src/lib/database.ts'
 import type { Notification } from '../src/lib/notification.ts'
 
 const scheduledWorkflow = {
-  id: '00000000-0000-0000-0000-000000000010',
+  id: '00000000-0000-4000-8000-000000000010',
   enabled: true,
   triggers: [{ type: 'TRIGGER_CRON', pattern: '* * * * *' }]
 } as unknown as Workflow

@@ -1,10 +1,15 @@
+import {
+  eventPredicateSchema,
+  workflowTriggersSchema,
+  type EventPredicate,
+  type WorkflowTrigger
+} from '@mudkipme/klinklang-domain'
 import React from 'react'
 import { Button } from '../../components/ui/button'
 import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select'
 import { Textarea } from '../../components/ui/textarea'
-import type { WorkflowTrigger } from './WorkflowMeta'
 
 export type TriggerDraft =
   | {
@@ -74,10 +79,15 @@ export const buildTriggerPayloads = (drafts: TriggerDraft[]): { triggers: Workfl
     if (draft.topic.trim().length === 0) {
       return { triggers: [], error: 'Eventbus trigger topic is required.' }
     }
-    let predicate: unknown = undefined
+    let predicate: EventPredicate | undefined = undefined
     if (draft.predicateText.trim().length > 0) {
       try {
-        predicate = JSON.parse(draft.predicateText)
+        const input: unknown = JSON.parse(draft.predicateText)
+        const parsed = eventPredicateSchema.safeParse(input)
+        if (!parsed.success) {
+          return { triggers: [], error: parsed.error.issues.map(issue => issue.message).join('; ') }
+        }
+        predicate = parsed.data
       } catch (error) {
         return { triggers: [], error: `Invalid predicate JSON: ${error instanceof Error ? error.message : 'Unknown error'}` }
       }
@@ -95,7 +105,10 @@ export const buildTriggerPayloads = (drafts: TriggerDraft[]): { triggers: Workfl
       throttleKeyPath: draft.throttleKeyPath.trim() === '' ? undefined : draft.throttleKeyPath.trim()
     })
   }
-  return { triggers }
+  const parsed = workflowTriggersSchema.safeParse(triggers)
+  return parsed.success
+    ? { triggers: parsed.data }
+    : { triggers: [], error: parsed.error.issues.map(issue => issue.message).join('; ') }
 }
 
 interface TriggerEditorProps {

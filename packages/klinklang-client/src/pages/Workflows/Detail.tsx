@@ -1,13 +1,13 @@
+import type { StateMachineDefinition, WorkflowMetadata } from '@mudkipme/klinklang-domain'
 import React, { useCallback, useEffect, useMemo } from 'react'
 import { Link, useParams } from 'react-router'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent } from '../../components/ui/card'
 import { useUserStore } from '../../store/user'
 import { useWorkflowDetailStore } from '../../store/workflows'
-import type { StateMachineDefinition } from './definition'
 import { FlowTimeline } from './FlowTimeline'
 import { WorkflowEditDialog } from './WorkflowEditDialog'
-import { WorkflowMeta, type WorkflowMetaData } from './WorkflowMeta'
+import { WorkflowMeta } from './WorkflowMeta'
 
 export const WorkflowDetail: React.FC = () => {
   const { workflowId } = useParams<{ workflowId: string }>()
@@ -26,7 +26,7 @@ export const WorkflowDetail: React.FC = () => {
     if (currentUser === null || workflow === null) {
       return false
     }
-    const isOwner = workflow.userId !== null && workflow.userId !== undefined && workflow.userId === currentUser.id
+    const isOwner = workflow.userId !== null && workflow.userId === currentUser.id
     if (workflow.isPrivate) {
       return isOwner
     }
@@ -48,7 +48,7 @@ export const WorkflowDetail: React.FC = () => {
     }
   }, [clearDetail, fetchActions])
 
-  const handleWorkflowUpdated = useCallback((workflowData: WorkflowMetaData, definitionData: StateMachineDefinition) => {
+  const handleWorkflowUpdated = useCallback((workflowData: WorkflowMetadata, definitionData: StateMachineDefinition) => {
     setWorkflowDetail(workflowData, definitionData)
   }, [setWorkflowDetail])
 

@@ -1,71 +1,22 @@
-export interface StateMachineDefinition {
-  StartAt: string
-  States: Record<string, StateDefinition>
-}
+import type {
+  ChoiceRule,
+  ChoiceRuleCondition,
+  ChoiceState,
+  StateDefinition,
+  StateMachineDefinition
+} from '@mudkipme/klinklang-domain'
 
-export interface TaskState {
-  Type: 'Task'
-  Resource: string
-  Parameters?: unknown
-  InputPath?: string | null
-  ResultPath?: string | null
-  OutputPath?: string | null
-  Next?: string
-  End?: boolean
-}
-
-export interface ChoiceState {
-  Type: 'Choice'
-  Choices: ChoiceRule[]
-  Default?: string
-}
-
-export interface PassState {
-  Type: 'Pass'
-  Parameters?: unknown
-  InputPath?: string | null
-  ResultPath?: string | null
-  OutputPath?: string | null
-  Next?: string
-  End?: boolean
-}
-
-export interface SucceedState {
-  Type: 'Succeed'
-}
-
-export interface FailState {
-  Type: 'Fail'
-  Error?: string
-  Cause?: string
-}
-
-export type StateDefinition = TaskState | ChoiceState | PassState | SucceedState | FailState
-
-export type ChoiceRule =
-  & { Next: string }
-  & (
-    | { Variable: string; StringEquals: string }
-    | { Variable: string; StringMatches: string }
-    | { Variable: string; NumericEquals: number }
-    | { Variable: string; NumericEqualsPath: string }
-    | { Variable: string; NumericLessThan: number }
-    | { Variable: string; NumericLessThanPath: string }
-    | { Variable: string; NumericGreaterThan: number }
-    | { Variable: string; NumericGreaterThanPath: string }
-    | { Variable: string; NumericLessThanEquals: number }
-    | { Variable: string; NumericLessThanEqualsPath: string }
-    | { Variable: string; NumericGreaterThanEquals: number }
-    | { Variable: string; NumericGreaterThanEqualsPath: string }
-    | { Variable: string; BooleanEquals: boolean }
-    | { Variable: string; IsPresent: boolean }
-    | { Variable: string; IsNull: boolean }
-    | { Variable: string; IsString: boolean }
-    | { Variable: string; IsNumeric: boolean }
-    | { And: ChoiceRule[] }
-    | { Or: ChoiceRule[] }
-    | { Not: ChoiceRule }
-  )
+export type {
+  ChoiceRule,
+  ChoiceRuleCondition,
+  ChoiceState,
+  FailState,
+  PassState,
+  StateDefinition,
+  StateMachineDefinition,
+  SucceedState,
+  TaskState
+} from '@mudkipme/klinklang-domain'
 
 export type FlowItem =
   | { kind: 'state'; name: string; state: StateDefinition }
@@ -92,14 +43,14 @@ export const getParameterRows = (state: StateDefinition): Array<{ key: string; v
   if (parameters === null || parameters === undefined || typeof parameters !== 'object') {
     return []
   }
-  return Object.entries(parameters as Record<string, unknown>)
+  return Object.entries(parameters)
     .map(([key, value]) => ({
       key,
       value: typeof value === 'string' ? value : JSON.stringify(value)
     }))
 }
 
-export const formatChoiceRule = (rule: ChoiceRule): string => {
+export const formatChoiceRule = (rule: ChoiceRule | ChoiceRuleCondition): string => {
   if ('And' in rule) {
     return `AND(${rule.And.map(formatChoiceRule).join(', ')})`
   }

@@ -1,9 +1,10 @@
+import type { WorkflowTrigger } from '@mudkipme/klinklang-domain'
 import { CronExpressionParser } from 'cron-parser'
 import type { Redis } from 'ioredis'
 import { createHash } from 'node:crypto'
 import type { Logger } from 'pino'
 import type { PrismaClient } from '../lib/database.ts'
-import type { WorkflowTrigger } from '../models/workflow-type.ts'
+import { parseWorkflowTriggers } from '../models/workflow-data.ts'
 import { createInstanceWithWorkflow } from '../models/workflow.ts'
 import type { MessageType, Notification } from './notification.ts'
 
@@ -113,7 +114,7 @@ export class CronScheduler {
 
     const entries: CronTriggerEntry[] = []
     for (const workflow of workflows) {
-      for (const trigger of workflow.triggers as WorkflowTrigger[]) {
+      for (const trigger of parseWorkflowTriggers(workflow)) {
         if (trigger.type === 'TRIGGER_CRON') {
           entries.push({ workflowId: workflow.id, trigger })
         }

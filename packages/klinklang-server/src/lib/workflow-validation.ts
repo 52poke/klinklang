@@ -1,151 +1,28 @@
+import {
+  workflowCreateRequestSchema,
+  workflowUpdateRequestSchema,
+  type StateMachineDefinition,
+  type WorkflowCreateRequest,
+  type WorkflowTrigger
+} from '@mudkipme/klinklang-domain'
 import { CronExpressionParser } from 'cron-parser'
-import { z } from 'zod'
 import { validateActionInput } from '../actions/register.ts'
 import { SUPPORTED_ACTION_TYPES } from '../actions/supported.ts'
-import { choiceRuleSchema } from './workflow-choice-schema.ts'
-import type { StateMachineDefinition } from '../models/asl.ts'
-import type { WorkflowTrigger } from '../models/workflow-type.ts'
 import {
-  eventPredicateSchema,
   validateChoiceConditionPaths,
   validateJSONPath,
   validateParameterPaths
 } from './workflow-runtime-validation.ts'
 
-const eventBusTriggerSchema = z.object({
-  type: z.literal('TRIGGER_EVENTBUS'),
-  topic: z.string().min(1),
-  predicate: eventPredicateSchema.optional(),
-  throttle: z.number().int().positive().optional(),
-  throttleKeyPath: z.string().min(1).optional()
-}).strict().superRefine((trigger: z.infer<typeof eventBusTriggerSchema>, context) => {
-  const hasThrottle = trigger.throttle !== undefined
-  const hasThrottleKeyPath = trigger.throttleKeyPath !== undefined
-  if (hasThrottle !== hasThrottleKeyPath) {
-    context.addIssue({
-      code: 'custom',
-      message: 'throttle and throttleKeyPath must be provided together'
-    })
-  }
-})
-
-const cronTriggerSchema = z.object({
-  type: z.literal('TRIGGER_CRON'),
-  pattern: z.string().min(1)
-}).strict()
-
-const manualTriggerSchema = z.object({
-  type: z.literal('TRIGGER_MANUAL')
-}).strict()
-
-const workflowTriggerSchema = z.discriminatedUnion('type', [
-  eventBusTriggerSchema,
-  cronTriggerSchema,
-  manualTriggerSchema
-])
-
-const taskStateSchema = z.object({
-  Type: z.literal('Task'),
-  Resource: z.string().min(1),
-  Parameters: z.unknown().optional(),
-  InputPath: z.string().nullable().optional(),
-  ResultPath: z.string().nullable().optional(),
-  OutputPath: z.string().nullable().optional(),
-  Next: z.string().min(1).optional(),
-  End: z.boolean().optional()
-}).strict()
-
-const passStateSchema = z.object({
-  Type: z.literal('Pass'),
-  Parameters: z.unknown().optional(),
-  InputPath: z.string().nullable().optional(),
-  ResultPath: z.string().nullable().optional(),
-  OutputPath: z.string().nullable().optional(),
-  Next: z.string().min(1).optional(),
-  End: z.boolean().optional()
-}).strict()
-
-const choiceStateSchema = z.object({
-  Type: z.literal('Choice'),
-  Choices: z.array(choiceRuleSchema).min(1),
-  Default: z.string().min(1).optional()
-}).strict()
-
-const succeedStateSchema = z.object({
-  Type: z.literal('Succeed')
-}).strict()
-
-const failStateSchema = z.object({
-  Type: z.literal('Fail'),
-  Error: z.string().optional(),
-  Cause: z.string().optional()
-}).strict()
-
-const stateSchema = z.discriminatedUnion('Type', [
-  taskStateSchema,
-  passStateSchema,
-  choiceStateSchema,
-  succeedStateSchema,
-  failStateSchema
-])
-
-const workflowDefinitionSchema = z.object({
-  StartAt: z.string().min(1),
-  States: z.record(z.string(), stateSchema)
-}).strict()
-
-const workflowUpdateSchema = z.object({
-  name: z.string().min(1),
-  isPrivate: z.boolean(),
-  enabled: z.boolean(),
-  triggers: z.array(workflowTriggerSchema),
-  definition: workflowDefinitionSchema
-}).partial().strict().superRefine((data: z.infer<typeof workflowUpdateSchema>, context) => {
-  if (Object.keys(data).length === 0) {
-    context.addIssue({
-      code: 'custom',
-      message: 'payload must include at least one field'
-    })
-  }
-})
-
-const workflowCreateSchema = z.object({
-  name: z.string().min(1),
-  isPrivate: z.boolean(),
-  enabled: z.boolean(),
-  triggers: z.array(workflowTriggerSchema),
-  definition: workflowDefinitionSchema
-}).strict()
-
-export interface WorkflowUpdatePayload {
-  name: string
-  isPrivate: boolean
-  enabled: boolean
-  triggers: WorkflowTrigger[]
-  definition: StateMachineDefinition
-}
-
-export interface WorkflowCreatePayload {
-  name: string
-  isPrivate: boolean
-  enabled: boolean
-  triggers: WorkflowTrigger[]
-  definition: StateMachineDefinition
-}
-
-export interface WorkflowUpdateBase {
-  name: string
-  isPrivate: boolean
-  enabled: boolean
-  triggers: WorkflowTrigger[]
-  definition: StateMachineDefinition
-}
+export type WorkflowUpdatePayload = WorkflowCreateRequest
+export type WorkflowCreatePayload = WorkflowCreateRequest
+export type WorkflowUpdateBase = WorkflowCreateRequest
 
 export function validateWorkflowUpdatePayload (
   payload: unknown,
   base: WorkflowUpdateBase
 ): { data: WorkflowUpdatePayload | null; issues: string[] } {
-  const parsed = workflowUpdateSchema.safeParse(payload)
+  const parsed = workflowUpdateRequestSchema.safeParse(payload)
   if (!parsed.success) {
     return {
       data: null,
@@ -157,11 +34,11 @@ export function validateWorkflowUpdatePayload (
   }
 
   const issues: string[] = []
-  const triggers = (parsed.data.triggers ?? base.triggers) as WorkflowTrigger[]
+  const triggers = parsed.data.triggers ?? base.triggers
   const triggerIssues = validateTriggers(triggers)
   issues.push(...triggerIssues)
 
-  const definition = (parsed.data.definition ?? base.definition) as StateMachineDefinition
+  const definition = parsed.data.definition ?? base.definition
   const definitionIssues = validateStateMachineDefinition(definition)
   issues.push(...definitionIssues)
 
@@ -184,7 +61,7 @@ export function validateWorkflowUpdatePayload (
 export function validateWorkflowCreatePayload (
   payload: unknown
 ): { data: WorkflowCreatePayload | null; issues: string[] } {
-  const parsed = workflowCreateSchema.safeParse(payload)
+  const parsed = workflowCreateRequestSchema.safeParse(payload)
   if (!parsed.success) {
     return {
       data: null,
@@ -195,8 +72,7 @@ export function validateWorkflowCreatePayload (
     }
   }
 
-  const triggers = parsed.data.triggers as WorkflowTrigger[]
-  const definition = parsed.data.definition as StateMachineDefinition
+  const { triggers, definition } = parsed.data
   const issues = [
     ...validateTriggers(triggers),
     ...validateStateMachineDefinition(definition)

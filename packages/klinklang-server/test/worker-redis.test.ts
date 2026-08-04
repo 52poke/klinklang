@@ -18,7 +18,7 @@ interface QueuedJob<T> {
   data: T
 }
 
-const workflowId = '00000000-0000-0000-0000-000000000020'
+const workflowId = '00000000-0000-4000-8000-000000000020'
 
 const regexpWorkflow: Workflow = {
   id: workflowId,

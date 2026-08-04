@@ -1,10 +1,11 @@
+import type { WorkflowInstance } from '@mudkipme/klinklang-domain'
 import React, { useCallback, useEffect, useMemo } from 'react'
 import { Link, useParams } from 'react-router'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Separator } from '../../components/ui/separator'
 import { useUserStore } from '../../store/user'
-import { useWorkflowInstancesStore, type WorkflowInstance } from '../../store/workflows'
+import { useWorkflowInstancesStore } from '../../store/workflows'
 
 const formatTime = (value?: number): string => {
   if (value === undefined) {

@@ -1,3 +1,4 @@
+import type { WorkflowMetadata } from '@mudkipme/klinklang-domain'
 import React, { useCallback, useEffect, useMemo } from 'react'
 import { Link } from 'react-router'
 import {
@@ -15,7 +16,7 @@ import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Separator } from '../../components/ui/separator'
 import { useUserStore } from '../../store/user'
-import { useWorkflowListStore, type WorkflowSummary } from '../../store/workflows'
+import { useWorkflowListStore } from '../../store/workflows'
 import { WorkflowCreateDialog } from './WorkflowCreateDialog'
 
 const formatDateTime = (value: string): string => {
@@ -50,12 +51,8 @@ export const Workflows: React.FC = () => {
     const groups = currentUser?.groups ?? []
     return groups.includes('sysop') || groups.includes('bot')
   }, [currentUser])
-  const hasManualTrigger = useCallback((workflow: WorkflowSummary): boolean => (
-    workflow.triggers.some((trigger) =>
-      typeof trigger === 'object'
-      && trigger !== null
-      && (trigger as { type?: string }).type === 'TRIGGER_MANUAL'
-    )
+  const hasManualTrigger = useCallback((workflow: WorkflowMetadata): boolean => (
+    workflow.triggers.some(trigger => trigger.type === 'TRIGGER_MANUAL')
   ), [])
 
   const refreshWorkflows = useCallback(() => {
@@ -198,7 +195,7 @@ export const Workflows: React.FC = () => {
                 <div>
                   <span className='font-medium text-foreground'>Updated:</span> {formatDateTime(workflow.updatedAt)}
                 </div>
-                {workflow.userId !== null && workflow.userId !== undefined && workflow.userId !== '' && (
+                {workflow.userId !== null && (
                   <div>
                     <span className='font-medium text-foreground'>Owner:</span> {workflow.userId}
                   </div>

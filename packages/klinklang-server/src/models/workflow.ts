@@ -1,8 +1,8 @@
+import type { StateDefinition, WorkflowTrigger } from '@mudkipme/klinklang-domain'
 import type { Workflow } from '@mudkipme/klinklang-prisma'
-import type { StateMachineDefinition } from './asl.ts'
 import { getState, resolveChoiceNext } from './asl.ts'
+import { parseWorkflowDefinition } from './workflow-data.ts'
 import WorkflowInstance from './workflow-instance.ts'
-import type { WorkflowTrigger } from './workflow-type.ts'
 
 export function canViewWorkflow (
   workflow: Pick<Workflow, 'isPrivate' | 'userId'>,
@@ -29,10 +29,10 @@ export async function createInstanceWithWorkflow (
 
 export function getLinkedStatesOfWorkflow (
   workflow: Workflow
-): Array<{ name: string; state: Record<string, unknown> }> {
-  const definition = workflow.definition as unknown as StateMachineDefinition
+): Array<{ name: string; state: StateDefinition }> {
+  const definition = parseWorkflowDefinition(workflow)
   const currentState = getState(definition, definition.StartAt)
-  const linkedStates: Array<{ name: string; state: Record<string, unknown> }> = []
+  const linkedStates: Array<{ name: string; state: StateDefinition }> = []
   const visited = new Set<string>()
   let currentName = definition.StartAt
   let current = currentState
@@ -41,7 +41,7 @@ export function getLinkedStatesOfWorkflow (
       throw new Error('CIRCULAR_STATE_FOUND')
     }
     visited.add(currentName)
-    linkedStates.push({ name: currentName, state: current as unknown as Record<string, unknown> })
+    linkedStates.push({ name: currentName, state: current })
     const nextName = current.Type === 'Task'
       ? (current.End === true ? null : (current.Next ?? null))
       : current.Type === 'Pass'

@@ -1,133 +1,27 @@
+import type {
+  ChoiceRule,
+  ChoiceRuleCondition,
+  ChoiceState,
+  PassState,
+  StateDefinition,
+  StateMachineDefinition,
+  TaskState
+} from '@mudkipme/klinklang-domain'
 import { JSONPath } from 'jsonpath-plus'
 import safeRegex from 'safe-regex'
 import { render } from '../lib/template.ts'
 
-export interface StateMachineDefinition {
-  StartAt: string
-  States: Record<string, StateDefinition>
-}
-
-export interface TaskState {
-  Type: 'Task'
-  Resource: string
-  Parameters?: unknown
-  InputPath?: string | null
-  ResultPath?: string | null
-  OutputPath?: string | null
-  Next?: string
-  End?: boolean
-}
-
-export interface ChoiceState {
-  Type: 'Choice'
-  Choices: ChoiceRule[]
-  Default?: string
-}
-
-export interface PassState {
-  Type: 'Pass'
-  Parameters?: unknown
-  InputPath?: string | null
-  ResultPath?: string | null
-  OutputPath?: string | null
-  Next?: string
-  End?: boolean
-}
-
-export interface SucceedState {
-  Type: 'Succeed'
-}
-
-export interface FailState {
-  Type: 'Fail'
-  Error?: string
-  Cause?: string
-}
-
-export type StateDefinition = TaskState | ChoiceState | PassState | SucceedState | FailState
-
-export type ChoiceRule = {
-  Next: string
-} & ChoiceRuleCondition
-
-export type ChoiceRuleCondition =
-  | {
-    Variable: string
-    StringEquals: string
-  }
-  | {
-    Variable: string
-    StringMatches: string
-  }
-  | {
-    Variable: string
-    NumericEquals: number
-  }
-  | {
-    Variable: string
-    NumericEqualsPath: string
-  }
-  | {
-    Variable: string
-    NumericLessThan: number
-  }
-  | {
-    Variable: string
-    NumericLessThanPath: string
-  }
-  | {
-    Variable: string
-    NumericGreaterThan: number
-  }
-  | {
-    Variable: string
-    NumericGreaterThanPath: string
-  }
-  | {
-    Variable: string
-    NumericLessThanEquals: number
-  }
-  | {
-    Variable: string
-    NumericLessThanEqualsPath: string
-  }
-  | {
-    Variable: string
-    NumericGreaterThanEquals: number
-  }
-  | {
-    Variable: string
-    NumericGreaterThanEqualsPath: string
-  }
-  | {
-    Variable: string
-    BooleanEquals: boolean
-  }
-  | {
-    Variable: string
-    IsPresent: boolean
-  }
-  | {
-    Variable: string
-    IsNull: boolean
-  }
-  | {
-    Variable: string
-    IsString: boolean
-  }
-  | {
-    Variable: string
-    IsNumeric: boolean
-  }
-  | {
-    And: ChoiceRuleCondition[]
-  }
-  | {
-    Or: ChoiceRuleCondition[]
-  }
-  | {
-    Not: ChoiceRuleCondition
-  }
+export type {
+  ChoiceRule,
+  ChoiceRuleCondition,
+  ChoiceState,
+  FailState,
+  PassState,
+  StateDefinition,
+  StateMachineDefinition,
+  SucceedState,
+  TaskState
+} from '@mudkipme/klinklang-domain'
 
 export function getState (definition: StateMachineDefinition, stateName: string): StateDefinition {
   const state = definition.States[stateName]

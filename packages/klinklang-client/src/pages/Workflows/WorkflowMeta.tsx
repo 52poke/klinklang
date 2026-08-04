@@ -1,32 +1,8 @@
+import type { WorkflowMetadata, WorkflowTrigger } from '@mudkipme/klinklang-domain'
 import React from 'react'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 
-export type WorkflowTrigger =
-  | {
-    type: 'TRIGGER_EVENTBUS'
-    topic: string
-    predicate?: unknown
-    throttle?: number
-    throttleKeyPath?: string
-  }
-  | {
-    type: 'TRIGGER_CRON'
-    pattern: string
-  }
-  | {
-    type: 'TRIGGER_MANUAL'
-  }
-
-export interface WorkflowMetaData {
-  id: string
-  name: string
-  isPrivate: boolean
-  enabled: boolean
-  triggers: WorkflowTrigger[]
-  createdAt: string
-  updatedAt: string
-  userId?: string | null
-}
+export type { WorkflowTrigger }
 
 const formatDateTime = (value: string): string => {
   const date = new Date(value)
@@ -62,7 +38,7 @@ const formatTriggerDetails = (trigger: WorkflowTrigger): Array<{ label: string; 
   }
 }
 
-export const WorkflowMeta: React.FC<{ workflow: WorkflowMetaData }> = ({ workflow }) => (
+export const WorkflowMeta: React.FC<{ workflow: WorkflowMetadata }> = ({ workflow }) => (
   <Card className='h-fit'>
     <CardHeader>
       <CardTitle className='text-sm'>Workflow metadata</CardTitle>

@@ -9,9 +9,11 @@ import workflowRoutes from '../src/routes/workflow.ts'
 import userRoutes from '../src/routes/user.ts'
 import type { FediverseService } from '../src/services/fediverse.ts'
 
-const ownerId = '00000000-0000-0000-0000-000000000001'
-const otherId = '00000000-0000-0000-0000-000000000002'
-const sysopId = '00000000-0000-0000-0000-000000000003'
+const ownerId = '00000000-0000-4000-8000-000000000001'
+const otherId = '00000000-0000-4000-8000-000000000002'
+const sysopId = '00000000-0000-4000-8000-000000000003'
+const privateWorkflowId = '00000000-0000-4000-8000-000000000004'
+const publicWorkflowId = '00000000-0000-4000-8000-000000000005'
 
 const users = new Map([
   [ownerId, { id: ownerId, name: 'Owner', groups: ['bot'] }],
@@ -31,8 +33,8 @@ const workflow = (id: string, isPrivate: boolean, userId: string | null): Workfl
   userId
 })
 
-const privateWorkflow = workflow('private', true, ownerId)
-const publicWorkflow = workflow('public', false, ownerId)
+const privateWorkflow = workflow(privateWorkflowId, true, ownerId)
+const publicWorkflow = workflow(publicWorkflowId, false, ownerId)
 const workflows = new Map([
   [privateWorkflow.id, privateWorkflow],
   [publicWorkflow.id, publicWorkflow]
@@ -144,12 +146,12 @@ void describe('workflow route authorization', () => {
   void test('allows only the owner to read a private workflow', async () => {
     const denied = await app.inject({
       method: 'GET',
-      url: '/api/workflow/private/actions',
+      url: `/api/workflow/${privateWorkflowId}/actions`,
       headers: { 'x-test-user': otherId }
     })
     const allowed = await app.inject({
       method: 'GET',
-      url: '/api/workflow/private/actions',
+      url: `/api/workflow/${privateWorkflowId}/actions`,
       headers: { 'x-test-user': ownerId }
     })
 
@@ -160,19 +162,19 @@ void describe('workflow route authorization', () => {
   void test('allows sysops to update public workflows but not another user private workflow', async () => {
     const deniedPublic = await app.inject({
       method: 'PUT',
-      url: '/api/workflow/public',
+      url: `/api/workflow/${publicWorkflowId}`,
       headers: { 'x-test-user': otherId },
       payload: { name: 'Denied' }
     })
     const allowedPublic = await app.inject({
       method: 'PUT',
-      url: '/api/workflow/public',
+      url: `/api/workflow/${publicWorkflowId}`,
       headers: { 'x-test-user': sysopId },
       payload: { name: 'Updated' }
     })
     const deniedPrivate = await app.inject({
       method: 'PUT',
-      url: '/api/workflow/private',
+      url: `/api/workflow/${privateWorkflowId}`,
       headers: { 'x-test-user': sysopId },
       payload: { name: 'Denied' }
     })

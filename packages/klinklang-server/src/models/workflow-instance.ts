@@ -1,29 +1,24 @@
 import { diContainer } from '@fastify/awilix'
+import {
+  stateMachineDefinitionSchema,
+  workflowInstanceSchema,
+  type StateMachineDefinition,
+  type WorkflowInstance as WorkflowInstanceData,
+  type WorkflowTrigger
+} from '@mudkipme/klinklang-domain'
 import type { Workflow } from '@mudkipme/klinklang-prisma'
 import type { Job } from 'bullmq'
 import { randomUUID } from 'node:crypto'
+import type { z } from 'zod'
 import type { ActionJobData, ActionJobResult, Actions } from '../actions/interfaces.ts'
-import type { StateMachineDefinition } from './asl.ts'
 import { applyPassState, applyStateOutput, buildStateInput, getState, getTaskState, resolveChoiceNext } from './asl.ts'
-import type { WorkflowTrigger } from './workflow-type.ts'
 
-export interface WorkflowInstanceData {
-  workflowId: string
-  instanceId: string
-  firstJobId: string
-  currentJobId?: string
-  currentStateName?: string
-  status: 'pending' | 'running' | 'failed' | 'completed'
-  createdAt: number
-  startedAt?: number
-  completedAt?: number
-  trigger?: WorkflowTrigger
-  context: Record<string, unknown>
-}
+export type { WorkflowInstanceData }
 
-interface WorkflowInstanceStorageData extends WorkflowInstanceData {
-  definition?: StateMachineDefinition
-}
+const workflowInstanceStorageSchema = workflowInstanceSchema.extend({
+  definition: stateMachineDefinitionSchema.optional()
+})
+type WorkflowInstanceStorageData = z.infer<typeof workflowInstanceStorageSchema>
 
 export type WorkflowTransition<T extends Actions> =
   | {
@@ -187,7 +182,7 @@ class WorkflowInstance {
     if (definitionValue === null) {
       throw new Error('ERR_WORKFLOW_DEFINITION_NOT_FOUND')
     }
-    const definition = definitionValue as unknown as StateMachineDefinition
+    const definition = stateMachineDefinitionSchema.parse(definitionValue)
     let context: Record<string, unknown> = { payload }
     let startName: string | null = definition.StartAt
     let startState = getState(definition, startName)
@@ -280,9 +275,10 @@ class WorkflowInstance {
     if (missingIds.length > 0) {
       await redis.zrem(indexKey, ...missingIds)
     }
-    return instances.filter(instance => instance !== null).map(data =>
-      new WorkflowInstance(JSON.parse(data) as WorkflowInstanceStorageData)
-    )
+    return instances.filter(instance => instance !== null).map(data => {
+      const parsed: unknown = JSON.parse(data)
+      return new WorkflowInstance(workflowInstanceStorageSchema.parse(parsed))
+    })
   }
 
   public static async getInstance (workflowId: string, instanceId: string): Promise<WorkflowInstance | null> {
@@ -291,7 +287,8 @@ class WorkflowInstance {
     if (instance === null) {
       return null
     }
-    return new WorkflowInstance(JSON.parse(instance) as WorkflowInstanceStorageData)
+    const parsed: unknown = JSON.parse(instance)
+    return new WorkflowInstance(workflowInstanceStorageSchema.parse(parsed))
   }
 
   private async getDefinition (): Promise<StateMachineDefinition> {
@@ -307,7 +304,7 @@ class WorkflowInstance {
     if (definitionValue === null) {
       throw new Error('ERR_WORKFLOW_DEFINITION_NOT_FOUND')
     }
-    const definition = definitionValue as unknown as StateMachineDefinition
+    const definition = stateMachineDefinitionSchema.parse(definitionValue)
     this.#definition = definition
     return definition
   }
