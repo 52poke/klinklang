@@ -306,10 +306,10 @@ function validateStateMachineDefinition (definition: StateMachineDefinition): st
       }
       case 'Choice': {
         for (let index = 0; index < state.Choices.length; index += 1) {
-          const choice = state.Choices[index] as { Next: string }
+          const choice = state.Choices[index]
           addEdge(stateName, choice.Next, `States.${stateName}.Choices.${index}.Next`)
           validateChoiceConditionPaths(
-            choice as unknown as Record<string, unknown>,
+            choice,
             `States.${stateName}.Choices.${index}`,
             issues
           )

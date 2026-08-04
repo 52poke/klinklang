@@ -14,7 +14,8 @@
     "build": "tsc",
     "start": "tsx watch src/index.ts",
     "serve": "NODE_ENV=production node dist/index.js",
-    "test": "node --import tsx --test test/*.test.ts"
+    "test": "node --import tsx --test test/*.test.ts",
+    "test:redis": "node --import tsx --test test/worker-redis.e2e.test.ts"
   },
   "bugs": {
     "url": "https://github.com/mudkipme/klinklang/issues"

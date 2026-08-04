@@ -308,7 +308,7 @@ function resolveParameters (parameters: unknown, context: Record<string, unknown
   }
 
   if ('Template' in parameters && Object.keys(parameters).length === 1) {
-    const templateValue = (parameters as { Template: unknown }).Template
+    const templateValue = parameters.Template
     if (typeof templateValue === 'string') {
       return render(templateValue, context)
     }

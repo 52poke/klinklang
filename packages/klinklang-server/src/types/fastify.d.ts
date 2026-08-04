@@ -1,3 +1,4 @@
+import '@fastify/session'
 import type { Queue, Worker } from 'bullmq'
 import type { Client } from 'discord.js'
 import type { Redis } from 'ioredis'

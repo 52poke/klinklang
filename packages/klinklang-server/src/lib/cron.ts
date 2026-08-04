@@ -1,7 +1,6 @@
 import { CronExpressionParser } from 'cron-parser'
 import type { Redis } from 'ioredis'
 import { createHash } from 'node:crypto'
-import { setTimeout as delay } from 'node:timers/promises'
 import type { Logger } from 'pino'
 import type { PrismaClient } from '../lib/database.ts'
 import type { WorkflowTrigger } from '../models/workflow-type.ts'
@@ -86,13 +85,11 @@ export class CronScheduler {
     try {
       const ok = await this.#deps.redis.set(CronScheduler.getLockKey(entry), '1', 'EX', LOCK_TTL_SECONDS, 'NX')
       if (ok === null) {
-        this.scheduleNext(entry)
         return
       }
 
       const workflow = await this.#deps.prisma.workflow.findUnique({ where: { id: entry.workflowId } })
       if (workflow?.enabled !== true) {
-        this.scheduleNext(entry)
         return
       }
 
@@ -100,7 +97,6 @@ export class CronScheduler {
     } catch (error) {
       this.#deps.logger.error({ err: error, workflowId: entry.workflowId }, 'cron trigger failed')
     } finally {
-      await delay(0)
       this.scheduleNext(entry)
     }
   }
