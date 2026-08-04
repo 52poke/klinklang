@@ -5,6 +5,7 @@ import type {
   StateDefinition,
   StateMachineDefinition
 } from '@mudkipme/klinklang-domain'
+import { getState, getStateTransitions } from '@mudkipme/klinklang-domain'
 
 export type {
   ChoiceRule,
@@ -78,65 +79,25 @@ export const buildPath = (
   startName: string,
   visited: Set<string>
 ): FlowItem[] => {
+  const state = getState(definition, startName)
   if (visited.has(startName)) {
-    return [{ kind: 'state', name: `${startName} (loop)`, state: definition.States[startName] }]
+    return [{ kind: 'state', name: `${startName} (loop)`, state }]
   }
-  const state = definition.States[startName]
   const nextVisited = new Set(visited)
   nextVisited.add(startName)
+  const transitions = getStateTransitions(state)
 
   if (state.Type === 'Choice') {
-    const branches: Branch[] = state.Choices.map((choice) => ({
-      label: formatChoiceRule(choice),
-      path: buildPath(definition, choice.Next, nextVisited)
+    const branches: Branch[] = transitions.map(transition => ({
+      label: transition.kind === 'choice' ? formatChoiceRule(transition.rule) : 'Default',
+      path: buildPath(definition, transition.target, nextVisited)
     }))
-    if (typeof state.Default === 'string' && state.Default.length > 0) {
-      branches.push({
-        label: 'Default',
-        path: buildPath(definition, state.Default, nextVisited)
-      })
-    }
     return [{ kind: 'choice', name: startName, state, branches }]
   }
 
   const current: FlowItem = { kind: 'state', name: startName, state }
-  if ('End' in state && state.End === true) {
-    return [current]
-  }
-  if ('Next' in state && typeof state.Next === 'string') {
-    return [current, ...buildPath(definition, state.Next, nextVisited)]
-  }
-  return [current]
-}
-
-export const collectStateNames = (definition: StateMachineDefinition): string[] => {
-  const order: string[] = []
-  const visited = new Set<string>()
-  const visit = (name: string): void => {
-    if (visited.has(name)) {
-      return
-    }
-    visited.add(name)
-    order.push(name)
-    const state = definition.States[name]
-    if (state.Type === 'Choice') {
-      state.Choices.forEach(choice => {
-        visit(choice.Next)
-      })
-      if (typeof state.Default === 'string' && state.Default.length > 0) {
-        visit(state.Default)
-      }
-      return
-    }
-    if ('Next' in state && typeof state.Next === 'string') {
-      visit(state.Next)
-    }
-  }
-  visit(definition.StartAt)
-  for (const name of Object.keys(definition.States)) {
-    if (!visited.has(name)) {
-      order.push(name)
-    }
-  }
-  return order
+  const transition = transitions.at(0)
+  return transition === undefined
+    ? [current]
+    : [current, ...buildPath(definition, transition.target, nextVisited)]
 }

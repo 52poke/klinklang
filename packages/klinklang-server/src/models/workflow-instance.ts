@@ -11,7 +11,13 @@ import type { Job } from 'bullmq'
 import { randomUUID } from 'node:crypto'
 import type { z } from 'zod'
 import type { ActionJobData, ActionJobResult, Actions } from '../actions/interfaces.ts'
-import { applyPassState, applyStateOutput, buildStateInput, getState, getTaskState, resolveChoiceNext } from './asl.ts'
+import {
+  applyPassState,
+  applyStateOutput,
+  buildStateInput,
+  getTaskState,
+  interpretStateTransition
+} from './asl.ts'
 
 export type { WorkflowInstanceData }
 
@@ -126,51 +132,31 @@ class WorkflowInstance {
   ): Promise<WorkflowTransition<T>> {
     const { queue } = diContainer.cradle
     const definition = await this.getDefinition()
-    const current = getState(definition, currentStateName)
-    let nextName: string | null = current.Type === 'Task'
-      ? (current.End === true ? null : (current.Next ?? null))
-      : current.Type === 'Pass'
-        ? (current.End === true ? null : (current.Next ?? null))
-        : current.Type === 'Choice'
-          ? resolveChoiceNext(current, this.context)
-          : null
-
-    while (nextName !== null) {
-      const nextState = getState(definition, nextName)
-      if (nextState.Type === 'Task') {
-        const jobData: ActionJobData<T> = {
-          actionType: nextState.Resource as T['actionType'],
-          input: buildStateInput(nextState, this.context) as T['input'],
-          workflowId: this.workflowId,
-          instanceId: this.instanceId,
-          stateName: nextName
-        }
-        const jobId = randomUUID()
-        const job = await queue.add(nextState.Resource, jobData, { jobId }) as Job<
-          ActionJobData<T>,
-          ActionJobResult<T>
-        >
-        return { status: 'scheduled', job }
-      }
-      if (nextState.Type === 'Pass') {
-        this.context = applyPassState(nextState, this.context)
-        await this.save()
-        nextName = nextState.End === true ? null : (nextState.Next ?? null)
-        continue
-      }
-      if (nextState.Type === 'Choice') {
-        nextName = resolveChoiceNext(nextState, this.context)
-        continue
-      }
-      switch (nextState.Type) {
-        case 'Succeed':
-          return { status: 'completed' }
-        case 'Fail':
-          return { status: 'failed' }
-      }
-      throw new Error('UNSUPPORTED_STATE_TYPE')
+    const transition = interpretStateTransition(definition, {
+      afterStateName: currentStateName,
+      context: this.context,
+      applyPassState
+    })
+    this.context = transition.context
+    if (transition.traversed.some(name => definition.States[name].Type === 'Pass')) {
+      await this.save()
     }
-    return { status: 'completed' }
+    if (transition.status === 'task') {
+      const jobData: ActionJobData<T> = {
+        actionType: transition.state.Resource as T['actionType'],
+        input: buildStateInput(transition.state, this.context) as T['input'],
+        workflowId: this.workflowId,
+        instanceId: this.instanceId,
+        stateName: transition.name
+      }
+      const jobId = randomUUID()
+      const job = await queue.add(transition.state.Resource, jobData, { jobId }) as Job<
+        ActionJobData<T>,
+        ActionJobResult<T>
+      >
+      return { status: 'scheduled', job }
+    }
+    return { status: transition.status }
   }
 
   public static async create (
@@ -183,73 +169,42 @@ class WorkflowInstance {
       throw new Error('ERR_WORKFLOW_DEFINITION_NOT_FOUND')
     }
     const definition = stateMachineDefinitionSchema.parse(definitionValue)
-    let context: Record<string, unknown> = { payload }
-    let startName: string | null = definition.StartAt
-    let startState = getState(definition, startName)
-    while (startState.Type === 'Pass' || startState.Type === 'Choice') {
-      if (startState.Type === 'Pass') {
-        context = applyPassState(startState, context)
-        if (startState.End === true) {
-          startState = { Type: 'Succeed' }
-          break
-        }
-        startName = startState.Next ?? null
-      } else {
-        const nextName = resolveChoiceNext(startState, context)
-        if (nextName === null) {
-          throw new Error('ERR_WORKFLOW_START_STATE_NOT_FOUND')
-        }
-        startName = nextName
-      }
-      if (startName === null) {
-        throw new Error('ERR_WORKFLOW_START_STATE_NOT_FOUND')
-      }
-      startState = getState(definition, startName)
-    }
-    if (startState.Type === 'Succeed' || startState.Type === 'Fail') {
-      const instanceId = randomUUID()
-      const jobId = randomUUID()
-      const data: WorkflowInstanceStorageData = {
-        workflowId: workflow.id,
-        instanceId,
-        firstJobId: jobId,
-        currentStateName: startState.Type === 'Succeed' ? startName : startName,
-        status: startState.Type === 'Succeed' ? 'completed' : 'failed',
-        createdAt: Date.now(),
-        completedAt: Date.now(),
-        trigger,
-        context,
-        definition
-      }
-      const instance = new WorkflowInstance(data)
-      await instance.save()
-      return instance
-    }
+    const transition = interpretStateTransition(definition, {
+      context: { payload },
+      applyPassState
+    })
     const instanceId = randomUUID()
-    const jobData: ActionJobData<Actions> = {
-      actionType: startState.Resource as Actions['actionType'],
-      input: buildStateInput(startState, context) as Actions['input'],
-      workflowId: workflow.id,
-      instanceId,
-      stateName: startName
-    }
     const jobId = randomUUID()
+    const isTerminal = transition.status !== 'task'
     const data: WorkflowInstanceStorageData = {
       workflowId: workflow.id,
       instanceId,
       firstJobId: jobId,
-      currentStateName: startName,
-      status: 'pending',
+      currentStateName: transition.name,
+      status: transition.status === 'task' ? 'pending' : transition.status,
       createdAt: Date.now(),
+      completedAt: isTerminal ? Date.now() : undefined,
       trigger,
-      context,
+      context: transition.context,
       definition
     }
     const instance = new WorkflowInstance(data)
     await instance.save()
 
+    if (transition.status !== 'task') {
+      return instance
+    }
+
+    const jobData: ActionJobData<Actions> = {
+      actionType: transition.state.Resource as Actions['actionType'],
+      input: buildStateInput(transition.state, transition.context) as Actions['input'],
+      workflowId: workflow.id,
+      instanceId,
+      stateName: transition.name
+    }
+
     try {
-      await diContainer.cradle.queue.add(startState.Resource, jobData, { jobId })
+      await diContainer.cradle.queue.add(transition.state.Resource, jobData, { jobId })
     } catch (error) {
       await instance.fail()
       throw error

@@ -1,14 +1,10 @@
-import type {
-  ChoiceRule,
-  ChoiceRuleCondition,
-  ChoiceState,
-  PassState,
-  StateDefinition,
-  StateMachineDefinition,
-  TaskState
+import {
+  getState,
+  type PassState,
+  type StateMachineDefinition,
+  type TaskState
 } from '@mudkipme/klinklang-domain'
 import { JSONPath } from 'jsonpath-plus'
-import safeRegex from 'safe-regex'
 import { render } from '../lib/template.ts'
 
 export type {
@@ -22,19 +18,12 @@ export type {
   SucceedState,
   TaskState
 } from '@mudkipme/klinklang-domain'
-
-export function getState (definition: StateMachineDefinition, stateName: string): StateDefinition {
-  const state = definition.States[stateName]
-  switch (state.Type) {
-    case 'Task':
-    case 'Choice':
-    case 'Pass':
-    case 'Fail':
-    case 'Succeed':
-      return state
-  }
-  throw new Error('UNSUPPORTED_STATE_TYPE')
-}
+export {
+  getState,
+  getStateTransitions,
+  interpretStateTransition,
+  resolveChoiceNext
+} from '@mudkipme/klinklang-domain'
 
 export function getTaskState (definition: StateMachineDefinition, stateName: string): TaskState {
   const state = getState(definition, stateName)
@@ -46,137 +35,6 @@ export function getTaskState (definition: StateMachineDefinition, stateName: str
 
 function getJsonPathValue (context: Record<string, unknown>, path: string): unknown {
   return JSONPath<unknown[]>({ json: context, path })[0]
-}
-
-function getNumericPathValue (context: Record<string, unknown>, path: string): number | null {
-  const value = getJsonPathValue(context, path)
-  return typeof value === 'number' ? value : null
-}
-
-function evaluateChoiceRule (rule: ChoiceRule | ChoiceRuleCondition, context: Record<string, unknown>): boolean {
-  if ('And' in rule) {
-    return rule.And.every(entry => evaluateChoiceRule(entry, context))
-  }
-  if ('Or' in rule) {
-    return rule.Or.some(entry => evaluateChoiceRule(entry, context))
-  }
-  if ('Not' in rule) {
-    return !evaluateChoiceRule(rule.Not, context)
-  }
-
-  const value = getJsonPathValue(context, rule.Variable)
-  if ('StringEquals' in rule) {
-    return value === rule.StringEquals
-  }
-  if ('StringMatches' in rule) {
-    if (typeof value !== 'string') {
-      return false
-    }
-    if (!safeRegex(rule.StringMatches)) {
-      throw new Error('UNSAFE_STRING_MATCHES_REGEX')
-    }
-    const matcher = new RegExp(rule.StringMatches, 'v')
-    return matcher.test(value)
-  }
-  if ('NumericEquals' in rule) {
-    return typeof value === 'number' && value === rule.NumericEquals
-  }
-  if ('NumericEqualsPath' in rule) {
-    const compare = getNumericPathValue(context, rule.NumericEqualsPath)
-    return typeof value === 'number' && compare !== null && value === compare
-  }
-  if ('NumericLessThan' in rule) {
-    return typeof value === 'number' && value < rule.NumericLessThan
-  }
-  if ('NumericLessThanPath' in rule) {
-    const compare = getNumericPathValue(context, rule.NumericLessThanPath)
-    return typeof value === 'number' && compare !== null && value < compare
-  }
-  if ('NumericGreaterThan' in rule) {
-    return typeof value === 'number' && value > rule.NumericGreaterThan
-  }
-  if ('NumericGreaterThanPath' in rule) {
-    const compare = getNumericPathValue(context, rule.NumericGreaterThanPath)
-    return typeof value === 'number' && compare !== null && value > compare
-  }
-  if ('NumericLessThanEquals' in rule) {
-    return typeof value === 'number' && value <= rule.NumericLessThanEquals
-  }
-  if ('NumericLessThanEqualsPath' in rule) {
-    const compare = getNumericPathValue(context, rule.NumericLessThanEqualsPath)
-    return typeof value === 'number' && compare !== null && value <= compare
-  }
-  if ('NumericGreaterThanEquals' in rule) {
-    return typeof value === 'number' && value >= rule.NumericGreaterThanEquals
-  }
-  if ('NumericGreaterThanEqualsPath' in rule) {
-    const compare = getNumericPathValue(context, rule.NumericGreaterThanEqualsPath)
-    return typeof value === 'number' && compare !== null && value >= compare
-  }
-  if ('BooleanEquals' in rule) {
-    return typeof value === 'boolean' && value === rule.BooleanEquals
-  }
-  if ('IsPresent' in rule) {
-    return rule.IsPresent ? value !== undefined : value === undefined
-  }
-  if ('IsNull' in rule) {
-    return rule.IsNull ? value === null : value !== null
-  }
-  if ('IsString' in rule) {
-    return rule.IsString ? typeof value === 'string' : typeof value !== 'string'
-  }
-  if ('IsNumeric' in rule) {
-    return rule.IsNumeric ? typeof value === 'number' : typeof value !== 'number'
-  }
-  return false
-}
-
-export function resolveChoiceNext (state: ChoiceState, context: Record<string, unknown>): string | null {
-  for (const choice of state.Choices) {
-    if (evaluateChoiceRule(choice, context)) {
-      return choice.Next
-    }
-  }
-  return state.Default ?? null
-}
-
-export function resolveNextTaskState (
-  definition: StateMachineDefinition,
-  currentStateName: string,
-  context: Record<string, unknown>
-): { name: string; state: TaskState } | null {
-  const current = getState(definition, currentStateName)
-  if (current.Type === 'Fail' || current.Type === 'Succeed') {
-    return null
-  }
-  const initialNextName = current.Type === 'Task'
-    ? (current.End === true ? null : (current.Next ?? null))
-    : current.Type === 'Pass'
-      ? (current.End === true ? null : (current.Next ?? null))
-      : resolveChoiceNext(current, context)
-  let nextName = initialNextName
-
-  while (nextName !== null) {
-    const nextState = getState(definition, nextName)
-    if (nextState.Type === 'Task') {
-      return { name: nextName, state: nextState }
-    }
-    if (nextState.Type === 'Choice') {
-      nextName = resolveChoiceNext(nextState, context)
-      continue
-    }
-    if (nextState.Type === 'Pass') {
-      nextName = nextState.End === true ? null : (nextState.Next ?? null)
-      continue
-    }
-    switch (nextState.Type) {
-      case 'Succeed':
-      case 'Fail':
-        return null
-    }
-    throw new Error('UNSUPPORTED_STATE_TYPE')
-  }
-  return null
 }
 
 function applyInputPath (context: Record<string, unknown>, inputPath?: string | null): Record<string, unknown> {

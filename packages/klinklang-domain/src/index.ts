@@ -1,6 +1,8 @@
 import safeRegex from 'safe-regex'
 import { z } from 'zod'
 
+export * from './transitions.js'
+
 export const jsonValueSchema = z.json()
 export type JsonValue = z.infer<typeof jsonValueSchema>
 

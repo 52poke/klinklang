@@ -117,6 +117,9 @@ importers:
 
   packages/klinklang-domain:
     dependencies:
+      jsonpath-plus:
+        specifier: ^10.3.0
+        version: 10.4.0
       safe-regex:
         specifier: ^2.1.1
         version: 2.1.1

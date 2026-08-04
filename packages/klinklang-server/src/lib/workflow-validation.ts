@@ -1,4 +1,5 @@
 import {
+  getStateTransitions,
   workflowCreateRequestSchema,
   workflowUpdateRequestSchema,
   type StateMachineDefinition,
@@ -166,7 +167,7 @@ function validateStateMachineDefinition (definition: StateMachineDefinition): st
           issues.push(`States.${stateName}.ResultPath: unsupported result path`)
         }
         validateParameterPaths(state.Parameters, `States.${stateName}.Parameters`, issues)
-        validateNextOrEnd(stateName, state, addEdge, issues)
+        validateNextOrEnd(stateName, state, issues)
         break
       }
       case 'Pass': {
@@ -177,27 +178,31 @@ function validateStateMachineDefinition (definition: StateMachineDefinition): st
           issues.push(`States.${stateName}.ResultPath: unsupported result path`)
         }
         validateParameterPaths(state.Parameters, `States.${stateName}.Parameters`, issues)
-        validateNextOrEnd(stateName, state, addEdge, issues)
+        validateNextOrEnd(stateName, state, issues)
         break
       }
       case 'Choice': {
         for (let index = 0; index < state.Choices.length; index += 1) {
           const choice = state.Choices[index]
-          addEdge(stateName, choice.Next, `States.${stateName}.Choices.${index}.Next`)
           validateChoiceConditionPaths(
             choice,
             `States.${stateName}.Choices.${index}`,
             issues
           )
         }
-        if (state.Default !== undefined) {
-          addEdge(stateName, state.Default, `States.${stateName}.Default`)
-        }
         break
       }
       case 'Succeed':
       case 'Fail':
         break
+    }
+    for (const transition of getStateTransitions(state)) {
+      const path = transition.kind === 'choice'
+        ? `States.${stateName}.Choices.${transition.index}.Next`
+        : transition.kind === 'default'
+          ? `States.${stateName}.Default`
+          : `States.${stateName}.Next`
+      addEdge(stateName, transition.target, path)
     }
   }
 
@@ -280,7 +285,6 @@ function validateStateMachineDefinition (definition: StateMachineDefinition): st
 function validateNextOrEnd (
   stateName: string,
   state: { Next?: string; End?: boolean },
-  addEdge: (from: string, to: string, path: string) => void,
   issues: string[]
 ): void {
   const end = state.End === true
@@ -291,8 +295,6 @@ function validateNextOrEnd (
   if (!end) {
     if (state.Next === undefined) {
       issues.push(`States.${stateName}.Next: must be provided when End is not true`)
-      return
     }
-    addEdge(stateName, state.Next, `States.${stateName}.Next`)
   }
 }

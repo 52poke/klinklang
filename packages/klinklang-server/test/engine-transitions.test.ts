@@ -4,8 +4,8 @@ import {
   applyPassState,
   applyStateOutput,
   buildStateInput,
+  interpretStateTransition,
   resolveChoiceNext,
-  resolveNextTaskState,
   type ChoiceState,
   type StateMachineDefinition,
   type TaskState
@@ -46,7 +46,7 @@ void describe('workflow engine transitions', () => {
     }), 'Rejected')
   })
 
-  void test('skips pass and choice states to find the next task or terminal state', () => {
+  void test('uses one interpreter for start, next-task, and terminal traversal', () => {
     const definition: StateMachineDefinition = {
       StartAt: 'First',
       States: {
@@ -62,9 +62,80 @@ void describe('workflow engine transitions', () => {
       }
     }
 
-    equal(resolveNextTaskState(definition, 'First', { approved: true })?.name, 'Second')
-    equal(resolveNextTaskState(definition, 'First', { approved: false }), null)
-    equal(resolveNextTaskState(definition, 'Second', { approved: true }), null)
+    const started = interpretStateTransition(definition, {
+      context: { approved: true },
+      applyPassState
+    })
+    equal(started.status, 'task')
+    equal(started.name, 'First')
+
+    const accepted = interpretStateTransition(definition, {
+      afterStateName: 'First',
+      context: { approved: true },
+      applyPassState
+    })
+    equal(accepted.status, 'task')
+    equal(accepted.name, 'Second')
+    deepEqual(accepted.traversed, ['Prepare', 'Route', 'Second'])
+
+    const rejected = interpretStateTransition(definition, {
+      afterStateName: 'First',
+      context: { approved: false },
+      applyPassState
+    })
+    equal(rejected.status, 'failed')
+    equal(rejected.name, 'Rejected')
+
+    const completed = interpretStateTransition(definition, {
+      afterStateName: 'Second',
+      context: { approved: true },
+      applyPassState
+    })
+    equal(completed.status, 'completed')
+  })
+
+  void test('never overwrites a Fail state with a completed transition', () => {
+    const definition: StateMachineDefinition = {
+      StartAt: 'Rejected',
+      States: { Rejected: { Type: 'Fail', Error: 'REJECTED' } }
+    }
+
+    equal(interpretStateTransition(definition, {
+      context: {},
+      applyPassState
+    }).status, 'failed')
+    equal(interpretStateTransition(definition, {
+      afterStateName: 'Rejected',
+      context: {},
+      applyPassState
+    }).status, 'failed')
+  })
+
+  void test('rejects unmatched choices and immediate non-task loops', () => {
+    throws(() => interpretStateTransition({
+      StartAt: 'Route',
+      States: {
+        Route: {
+          Type: 'Choice',
+          Choices: [{ Variable: '$.approved', BooleanEquals: true, Next: 'Done' }]
+        },
+        Done: { Type: 'Succeed' }
+      }
+    }, {
+      context: { approved: false },
+      applyPassState
+    }), /WORKFLOW_CHOICE_NOT_MATCHED/v)
+
+    throws(() => interpretStateTransition({
+      StartAt: 'LoopA',
+      States: {
+        LoopA: { Type: 'Pass', Next: 'LoopB' },
+        LoopB: { Type: 'Pass', Next: 'LoopA' }
+      }
+    }, {
+      context: {},
+      applyPassState
+    }), /WORKFLOW_IMMEDIATE_TRANSITION_LOOP/v)
   })
 
   void test('applies input, parameters, result, and output paths without losing context', () => {

@@ -1,7 +1,8 @@
-import { equal, ok } from 'node:assert/strict'
+import { deepEqual, equal, ok } from 'node:assert/strict'
 import { describe, test } from 'node:test'
 import {
   eventPredicateSchema,
+  getStateTransitions,
   workflowCreateRequestSchema,
   workflowDetailResponseSchema,
   workflowMetadataSchema
@@ -63,5 +64,19 @@ void describe('workflow domain schemas', () => {
       workflow: metadata,
       definition: { StartAt: 'Done', States: { Done: { Type: 'Succeed' } } }
     }).success)
+  })
+
+  void test('describes outgoing edges consistently for runtime and visualization', () => {
+    const choice = {
+      Type: 'Choice' as const,
+      Choices: [{ Variable: '$.approved', BooleanEquals: true, Next: 'Accepted' }],
+      Default: 'Rejected'
+    }
+
+    deepEqual(getStateTransitions(choice), [
+      { kind: 'choice', target: 'Accepted', rule: choice.Choices[0], index: 0 },
+      { kind: 'default', target: 'Rejected' }
+    ])
+    deepEqual(getStateTransitions({ Type: 'Fail', Error: 'REJECTED' }), [])
   })
 })
