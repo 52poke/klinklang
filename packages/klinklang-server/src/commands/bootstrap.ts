@@ -1,7 +1,7 @@
 import { workflowCreateRequestSchema } from '@mudkipme/klinklang-domain'
 import type { Prisma, PrismaClient } from '@mudkipme/klinklang-prisma'
 import { findWorkspaceDir } from '@pnpm/find-workspace-dir'
-import yaml from 'js-yaml'
+import { loadAll } from 'js-yaml'
 import { readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
 import { z } from 'zod'
@@ -70,7 +70,7 @@ export default async function bootstrap ({ config, prisma }: { config: Config; p
 
     const content = await readFile(filename, { encoding: 'utf-8' })
     const workflows: unknown[] = []
-    yaml.loadAll(content, workflow => {
+    loadAll(content, workflow => {
       workflows.push(workflow)
     })
     await Promise.all(workflows.map(async input => {

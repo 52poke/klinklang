@@ -35,7 +35,6 @@
     "@pnpm/find-workspace-dir": "^1000.1.5",
     "@prisma/adapter-pg": "^7.9.1",
     "@types/convict": "^6.1.6",
-    "@types/js-yaml": "^4.0.9",
     "@types/jsonwebtoken": "^9.0.10",
     "@types/lodash-es": "^4.17.12",
     "@types/node": "^26.1.2",
