@@ -4,7 +4,8 @@ import {
   workflowUpdateRequestSchema,
   type StateMachineDefinition,
   type WorkflowCreateRequest,
-  type WorkflowTrigger
+  type WorkflowTrigger,
+  type WorkflowUpdateRequest
 } from '@mudkipme/klinklang-domain'
 import { CronExpressionParser } from 'cron-parser'
 import { isActionType, validateActionInput } from '../actions/register.ts'
@@ -33,12 +34,19 @@ export function validateWorkflowUpdatePayload (
     }
   }
 
+  return validateWorkflowUpdateData(parsed.data, base)
+}
+
+export function validateWorkflowUpdateData (
+  data: WorkflowUpdateRequest,
+  base: WorkflowUpdateBase
+): { data: WorkflowUpdatePayload | null; issues: string[] } {
   const issues: string[] = []
-  const triggers = parsed.data.triggers ?? base.triggers
+  const triggers = data.triggers ?? base.triggers
   const triggerIssues = validateTriggers(triggers)
   issues.push(...triggerIssues)
 
-  const definition = parsed.data.definition ?? base.definition
+  const definition = data.definition ?? base.definition
   const definitionIssues = validateStateMachineDefinition(definition)
   issues.push(...definitionIssues)
 
@@ -48,9 +56,9 @@ export function validateWorkflowUpdatePayload (
 
   return {
     data: {
-      name: parsed.data.name ?? base.name,
-      isPrivate: parsed.data.isPrivate ?? base.isPrivate,
-      enabled: parsed.data.enabled ?? base.enabled,
+      name: data.name ?? base.name,
+      isPrivate: data.isPrivate ?? base.isPrivate,
+      enabled: data.enabled ?? base.enabled,
       triggers,
       definition
     },
@@ -72,7 +80,13 @@ export function validateWorkflowCreatePayload (
     }
   }
 
-  const { triggers, definition } = parsed.data
+  return validateWorkflowCreateData(parsed.data)
+}
+
+export function validateWorkflowCreateData (
+  data: WorkflowCreateRequest
+): { data: WorkflowCreatePayload | null; issues: string[] } {
+  const { triggers, definition } = data
   const issues = [
     ...validateTriggers(triggers),
     ...validateStateMachineDefinition(definition)
@@ -84,9 +98,9 @@ export function validateWorkflowCreatePayload (
 
   return {
     data: {
-      name: parsed.data.name,
-      isPrivate: parsed.data.isPrivate,
-      enabled: parsed.data.enabled,
+      name: data.name,
+      isPrivate: data.isPrivate,
+      enabled: data.enabled,
       triggers,
       definition
     },

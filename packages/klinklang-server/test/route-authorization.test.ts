@@ -1,10 +1,12 @@
 import { diContainer, fastifyAwilixPlugin } from '@fastify/awilix'
+import { serializerCompiler, validatorCompiler } from '@fastify/type-provider-zod'
 import type { PrismaClient, Workflow } from '@mudkipme/klinklang-prisma'
 import { asValue } from 'awilix'
 import { deepEqual, equal } from 'node:assert/strict'
 import { after, before, describe, test } from 'node:test'
 import { fastify, type FastifyInstance, type FastifyRequest } from 'fastify'
 import type { Redis } from 'ioredis'
+import { httpErrorHandler } from '../src/lib/http-errors.ts'
 import type { Notification } from '../src/lib/notification.ts'
 import workflowRoutes from '../src/routes/workflow.ts'
 import userRoutes from '../src/routes/user.ts'
@@ -34,7 +36,20 @@ const workflow = (id: string, isPrivate: boolean, userId: string | null): Workfl
   userId
 })
 
-const privateWorkflow = workflow(privateWorkflowId, true, ownerId)
+const privateWorkflow: Workflow = {
+  ...workflow(privateWorkflowId, true, ownerId),
+  definition: {
+    StartAt: 'Check',
+    States: {
+      Check: {
+        Type: 'Choice',
+        Choices: [{ Variable: '$.ready', BooleanEquals: true, Next: 'Done' }],
+        Default: 'Done'
+      },
+      Done: { Type: 'Succeed' }
+    }
+  }
+}
 const publicWorkflow = workflow(publicWorkflowId, false, ownerId)
 const workflows = new Map([
   [privateWorkflow.id, privateWorkflow],
@@ -48,6 +63,9 @@ void describe('workflow route authorization', () => {
   let revokedAccount: { userId: string; accountId: string } | null = null
 
   before(async () => {
+    app.setValidatorCompiler(validatorCompiler)
+    app.setSerializerCompiler(serializerCompiler)
+    app.setErrorHandler(httpErrorHandler)
     const prisma = {
       user: {
         findUnique: async ({ where }: { where: { id: string } }) => {
@@ -148,6 +166,33 @@ void describe('workflow route authorization', () => {
     })
   })
 
+  void test('validates and caps workflow list pagination at the HTTP boundary', async () => {
+    const invalid = await app.inject({
+      method: 'GET',
+      url: '/api/workflow?offset=-1',
+      headers: { 'x-test-user': otherId }
+    })
+    const capped = await app.inject({
+      method: 'GET',
+      url: '/api/workflow?limit=999999',
+      headers: { 'x-test-user': otherId }
+    })
+
+    equal(invalid.statusCode, 400)
+    equal(invalid.json<{ error: string }>().error, 'INVALID_REQUEST')
+    equal(capped.statusCode, 200)
+    deepEqual(listQuery, {
+      skip: 0,
+      take: 200,
+      where: {
+        OR: [
+          { isPrivate: false },
+          { userId: otherId }
+        ]
+      }
+    })
+  })
+
   void test('allows only the owner to read a private workflow', async () => {
     const denied = await app.inject({
       method: 'GET',
@@ -162,6 +207,44 @@ void describe('workflow route authorization', () => {
 
     equal(denied.statusCode, 403)
     equal(allowed.statusCode, 200)
+  })
+
+  void test('rejects malformed workflow params and bodies before route execution', async () => {
+    const invalidParams = await app.inject({
+      method: 'GET',
+      url: '/api/workflow/not-a-uuid/actions',
+      headers: { 'x-test-user': ownerId }
+    })
+    const invalidBody = await app.inject({
+      method: 'PUT',
+      url: `/api/workflow/${privateWorkflowId}`,
+      headers: { 'x-test-user': ownerId },
+      payload: { name: '' }
+    })
+
+    equal(invalidParams.statusCode, 400)
+    equal(invalidBody.statusCode, 400)
+    equal(invalidParams.json<{ error: string }>().error, 'INVALID_REQUEST')
+    equal(invalidBody.json<{ error: string }>().error, 'INVALID_REQUEST')
+    equal(updateCount, 0)
+  })
+
+  void test('keeps semantic workflow validation errors distinct from request shape errors', async () => {
+    const response = await app.inject({
+      method: 'PUT',
+      url: `/api/workflow/${privateWorkflowId}`,
+      headers: { 'x-test-user': ownerId },
+      payload: {
+        definition: {
+          StartAt: 'Missing',
+          States: { Done: { Type: 'Succeed' } }
+        }
+      }
+    })
+
+    equal(response.statusCode, 400)
+    equal(response.json<{ error: string }>().error, 'INVALID_WORKFLOW')
+    equal(updateCount, 0)
   })
 
   void test('allows sysops to update public workflows but not another user private workflow', async () => {

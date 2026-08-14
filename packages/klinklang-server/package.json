@@ -30,6 +30,7 @@
     "@fastify/error": "^4.2.0",
     "@fastify/session": "^11.1.2",
     "@fastify/static": "^10.1.2",
+    "@fastify/type-provider-zod": "^1.0.0",
     "@mudkipme/klinklang-domain": "workspace:*",
     "@mudkipme/klinklang-prisma": "workspace:*",
     "@pnpm/find-workspace-dir": "^1000.1.5",

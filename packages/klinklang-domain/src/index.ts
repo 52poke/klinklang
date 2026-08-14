@@ -151,19 +151,26 @@ export const choiceRuleConditionSchema: z.ZodType<ChoiceRuleCondition> = z.lazy(
 
 export type ChoiceRule = ChoiceRuleCondition & { Next: string }
 
-export const choiceRuleSchema: z.ZodType<ChoiceRule> = z.object({
+const choiceRuleWireSchema = z.object({
   Next: z.string().min(1)
-}).loose().transform((value, context) => {
+}).loose().superRefine((value, context) => {
   const { Next, ...condition } = value
   const parsed = choiceRuleConditionSchema.safeParse(condition)
   if (!parsed.success) {
     for (const issue of parsed.error.issues) {
       context.addIssue({ ...issue, path: issue.path })
     }
-    return z.NEVER
   }
-  return { ...parsed.data, Next }
 })
+
+export const choiceRuleSchema: z.ZodType<ChoiceRule> = z.codec(
+  choiceRuleWireSchema,
+  z.custom<ChoiceRule>(),
+  {
+    decode: value => value as ChoiceRule,
+    encode: value => value as z.output<typeof choiceRuleWireSchema>
+  }
+)
 
 export const taskStateSchema = z.object({
   Type: z.literal('Task'),
@@ -236,9 +243,37 @@ export const workflowUpdateRequestSchema = workflowCreateRequestSchema.partial()
 
 export const workflowTriggerRequestSchema = z.object({ payload: z.unknown().optional() }).strict()
 
+const paginationOffsetSchema = z.coerce.number().int().nonnegative()
+const paginationLimitSchema = z.coerce.number().int().positive()
+  .transform(limit => Math.min(limit, 200))
+
+export const workflowIdParamsSchema = z.object({
+  workflowId: z.uuid()
+}).strict()
+
+export const workflowInstanceParamsSchema = workflowIdParamsSchema.extend({
+  instanceId: z.uuid()
+}).strict()
+
+export const workflowListQuerySchema = z.object({
+  offset: paginationOffsetSchema.default(0),
+  limit: paginationLimitSchema.default(20)
+}).strict()
+
+export const workflowInstancesQuerySchema = z.object({
+  offset: paginationOffsetSchema.optional(),
+  limit: paginationLimitSchema.optional(),
+  start: paginationOffsetSchema.optional(),
+  stop: paginationLimitSchema.optional()
+}).strict()
+
 export type WorkflowCreateRequest = z.infer<typeof workflowCreateRequestSchema>
 export type WorkflowUpdateRequest = z.infer<typeof workflowUpdateRequestSchema>
 export type WorkflowTriggerRequest = z.infer<typeof workflowTriggerRequestSchema>
+export type WorkflowIdParams = z.infer<typeof workflowIdParamsSchema>
+export type WorkflowInstanceParams = z.infer<typeof workflowInstanceParamsSchema>
+export type WorkflowListQuery = z.infer<typeof workflowListQuerySchema>
+export type WorkflowInstancesQuery = z.infer<typeof workflowInstancesQuerySchema>
 
 export const workflowMetadataSchema = z.object({
   id: z.uuid(),
@@ -311,6 +346,14 @@ export const workflowValidationErrorResponseSchema = z.object({
   error: z.literal('INVALID_WORKFLOW'),
   issues: z.array(z.string())
 }).strict()
+export const requestValidationErrorResponseSchema = z.object({
+  error: z.literal('INVALID_REQUEST'),
+  issues: z.array(z.string())
+}).strict()
+export const workflowBadRequestResponseSchema = z.union([
+  requestValidationErrorResponseSchema,
+  workflowValidationErrorResponseSchema
+])
 
 export type WorkflowListResponse = z.infer<typeof workflowListResponseSchema>
 export type WorkflowDetailResponse = z.infer<typeof workflowDetailResponseSchema>
@@ -319,3 +362,4 @@ export type WorkflowInstanceResponse = z.infer<typeof workflowInstanceResponseSc
 export type WorkflowMutationResponse = z.infer<typeof workflowMutationResponseSchema>
 export type WorkflowTriggerResponse = z.infer<typeof workflowTriggerResponseSchema>
 export type WorkflowValidationErrorResponse = z.infer<typeof workflowValidationErrorResponseSchema>
+export type RequestValidationErrorResponse = z.infer<typeof requestValidationErrorResponseSchema>

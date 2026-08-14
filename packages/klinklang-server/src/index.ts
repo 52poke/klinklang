@@ -3,12 +3,14 @@ import fastifyCookie from '@fastify/cookie'
 import fastifySession from '@fastify/session'
 import fastifyStatic from '@fastify/static'
 import { findWorkspaceDir } from '@pnpm/find-workspace-dir'
+import { serializerCompiler, validatorCompiler } from '@fastify/type-provider-zod'
 import { fastify } from 'fastify'
 import { join } from 'node:path'
 import bootstrap from './commands/bootstrap.ts'
 import { startCronScheduler } from './lib/cron.ts'
 import { start } from './lib/eventbus.ts'
 import patchBigInt from './lib/ext.ts'
+import { httpErrorHandler } from './lib/http-errors.ts'
 import { register } from './lib/register.ts'
 import { RedisSessionStore } from './lib/session-store.ts'
 import { fediRoutes } from './routes/fedi.ts'
@@ -44,6 +46,9 @@ const launch = async (): Promise<void> => {
   const buildRoot = workspaceRoot === undefined ? '.' : `${workspaceRoot}/packages/klinklang-client`
   const buildPath = join(buildRoot, 'build')
   const server = fastify({ loggerInstance: logger, trustProxy: true })
+  server.setValidatorCompiler(validatorCompiler)
+  server.setSerializerCompiler(serializerCompiler)
+  server.setErrorHandler(httpErrorHandler)
 
   await server.register(fastifyCookie)
   const sessionMaxAgeMs = 30 * 24 * 60 * 60 * 1000
