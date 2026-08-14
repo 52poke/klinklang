@@ -242,6 +242,27 @@ export const workflowUpdateRequestSchema = workflowCreateRequestSchema.partial()
 })
 
 export const workflowTriggerRequestSchema = z.object({ payload: z.unknown().optional() }).strict()
+export const workflowSnapshotSchema = workflowCreateRequestSchema
+
+export const workflowRevisionChangeKindSchema = z.enum([
+  'CREATE',
+  'UPDATE',
+  'ROLLBACK',
+  'DUPLICATE',
+  'IMPORT',
+  'BOOTSTRAP'
+])
+
+export const workflowDuplicateRequestSchema = z.object({
+  name: z.string().min(1).optional()
+}).strict()
+
+export const workflowExportDocumentSchema = z.object({
+  formatVersion: z.literal(1),
+  workflow: workflowSnapshotSchema
+}).strict()
+
+export const workflowImportRequestSchema = workflowExportDocumentSchema
 
 const paginationOffsetSchema = z.coerce.number().int().nonnegative()
 const paginationLimitSchema = z.coerce.number().int().positive()
@@ -253,6 +274,15 @@ export const workflowIdParamsSchema = z.object({
 
 export const workflowInstanceParamsSchema = workflowIdParamsSchema.extend({
   instanceId: z.uuid()
+}).strict()
+
+export const workflowRevisionParamsSchema = workflowIdParamsSchema.extend({
+  revision: z.coerce.number().int().positive()
+}).strict()
+
+export const workflowDiffQuerySchema = z.object({
+  from: z.coerce.number().int().positive(),
+  to: z.coerce.number().int().positive()
 }).strict()
 
 export const workflowListQuerySchema = z.object({
@@ -270,8 +300,15 @@ export const workflowInstancesQuerySchema = z.object({
 export type WorkflowCreateRequest = z.infer<typeof workflowCreateRequestSchema>
 export type WorkflowUpdateRequest = z.infer<typeof workflowUpdateRequestSchema>
 export type WorkflowTriggerRequest = z.infer<typeof workflowTriggerRequestSchema>
+export type WorkflowSnapshot = z.infer<typeof workflowSnapshotSchema>
+export type WorkflowRevisionChangeKind = z.infer<typeof workflowRevisionChangeKindSchema>
+export type WorkflowDuplicateRequest = z.infer<typeof workflowDuplicateRequestSchema>
+export type WorkflowExportDocument = z.infer<typeof workflowExportDocumentSchema>
+export type WorkflowImportRequest = z.infer<typeof workflowImportRequestSchema>
 export type WorkflowIdParams = z.infer<typeof workflowIdParamsSchema>
 export type WorkflowInstanceParams = z.infer<typeof workflowInstanceParamsSchema>
+export type WorkflowRevisionParams = z.infer<typeof workflowRevisionParamsSchema>
+export type WorkflowDiffQuery = z.infer<typeof workflowDiffQuerySchema>
 export type WorkflowListQuery = z.infer<typeof workflowListQuerySchema>
 export type WorkflowInstancesQuery = z.infer<typeof workflowInstancesQuerySchema>
 
@@ -281,6 +318,7 @@ export const workflowMetadataSchema = z.object({
   isPrivate: z.boolean(),
   enabled: z.boolean(),
   triggers: workflowTriggersSchema,
+  currentRevision: z.number().int().positive(),
   createdAt: z.iso.datetime(),
   updatedAt: z.iso.datetime(),
   userId: z.uuid().nullable()
@@ -330,6 +368,31 @@ export type WorkflowInstance = z.infer<typeof workflowInstanceSchema>
 export type WorkflowStepExecution = z.infer<typeof workflowStepExecutionSchema>
 export type WorkflowStepLog = z.infer<typeof workflowStepLogSchema>
 
+export const workflowRevisionMetadataSchema = z.object({
+  workflowId: z.uuid(),
+  revision: z.number().int().positive(),
+  changeKind: workflowRevisionChangeKindSchema,
+  sourceWorkflowId: z.uuid().nullable(),
+  sourceRevision: z.number().int().positive().nullable(),
+  createdById: z.uuid().nullable(),
+  createdAt: z.iso.datetime()
+}).strict()
+
+export const workflowRevisionSchema = workflowRevisionMetadataSchema.extend({
+  snapshot: workflowSnapshotSchema
+}).strict()
+
+export const workflowDiffChangeSchema = z.object({
+  path: z.string(),
+  kind: z.enum(['added', 'removed', 'changed']),
+  before: z.unknown().optional(),
+  after: z.unknown().optional()
+}).strict()
+
+export type WorkflowRevisionMetadata = z.infer<typeof workflowRevisionMetadataSchema>
+export type WorkflowRevision = z.infer<typeof workflowRevisionSchema>
+export type WorkflowDiffChange = z.infer<typeof workflowDiffChangeSchema>
+
 export const workflowListResponseSchema = z.object({ workflows: z.array(workflowMetadataSchema) }).strict()
 export const workflowDetailResponseSchema = z.object({
   workflow: workflowMetadataSchema,
@@ -341,6 +404,21 @@ export const workflowMutationResponseSchema = z.object({ workflow: workflowMetad
 export const workflowTriggerResponseSchema = z.object({
   workflow: workflowMetadataSchema,
   instance: workflowInstanceSchema
+}).strict()
+export const workflowRevisionsResponseSchema = z.object({
+  revisions: z.array(workflowRevisionMetadataSchema)
+}).strict()
+export const workflowRevisionResponseSchema = z.object({
+  revision: workflowRevisionSchema
+}).strict()
+export const workflowDiffResponseSchema = z.object({
+  from: workflowRevisionMetadataSchema,
+  to: workflowRevisionMetadataSchema,
+  changes: z.array(workflowDiffChangeSchema)
+}).strict()
+export const workflowDeleteResponseSchema = z.object({
+  deleted: z.literal(true),
+  workflowId: z.uuid()
 }).strict()
 export const workflowValidationErrorResponseSchema = z.object({
   error: z.literal('INVALID_WORKFLOW'),
@@ -361,5 +439,9 @@ export type WorkflowInstancesResponse = z.infer<typeof workflowInstancesResponse
 export type WorkflowInstanceResponse = z.infer<typeof workflowInstanceResponseSchema>
 export type WorkflowMutationResponse = z.infer<typeof workflowMutationResponseSchema>
 export type WorkflowTriggerResponse = z.infer<typeof workflowTriggerResponseSchema>
+export type WorkflowRevisionsResponse = z.infer<typeof workflowRevisionsResponseSchema>
+export type WorkflowRevisionResponse = z.infer<typeof workflowRevisionResponseSchema>
+export type WorkflowDiffResponse = z.infer<typeof workflowDiffResponseSchema>
+export type WorkflowDeleteResponse = z.infer<typeof workflowDeleteResponseSchema>
 export type WorkflowValidationErrorResponse = z.infer<typeof workflowValidationErrorResponseSchema>
 export type RequestValidationErrorResponse = z.infer<typeof requestValidationErrorResponseSchema>

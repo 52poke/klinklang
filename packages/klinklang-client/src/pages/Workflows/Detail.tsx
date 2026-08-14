@@ -8,6 +8,7 @@ import { useWorkflowDetailStore } from '../../store/workflows'
 import { FlowTimeline } from './FlowTimeline'
 import { WorkflowEditDialog } from './WorkflowEditDialog'
 import { WorkflowMeta } from './WorkflowMeta'
+import { WorkflowVersionPanel } from './WorkflowVersionPanel'
 
 export const WorkflowDetail: React.FC = () => {
   const { workflowId } = useParams<{ workflowId: string }>()
@@ -32,6 +33,9 @@ export const WorkflowDetail: React.FC = () => {
     }
     return isOwner || currentUser.groups.includes('sysop')
   }, [currentUser, workflow])
+  const canCreate = useMemo(() => (
+    currentUser?.groups.some(group => group === 'sysop' || group === 'bot') ?? false
+  ), [currentUser])
 
   const fetchActions = useCallback(async () => {
     if (workflowId === undefined) {
@@ -110,11 +114,21 @@ export const WorkflowDetail: React.FC = () => {
         )}
 
       {definition !== null && (
-        <div className='grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]'>
-          <div className='flex flex-col gap-4'>
-            {workflow !== null && <WorkflowMeta workflow={workflow} />}
+        <div className='space-y-4'>
+          <div className='grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]'>
+            <div className='flex flex-col gap-4'>
+              {workflow !== null && <WorkflowMeta workflow={workflow} />}
+            </div>
+            <FlowTimeline definition={definition} />
           </div>
-          <FlowTimeline definition={definition} />
+          {workflow !== null && (
+            <WorkflowVersionPanel
+              workflow={workflow}
+              canManage={canEdit}
+              canCreate={canCreate}
+              onChanged={fetchActions}
+            />
+          )}
         </div>
       )}
     </div>

@@ -7,7 +7,9 @@ import { serializerCompiler, validatorCompiler } from '@fastify/type-provider-zo
 import { fastify } from 'fastify'
 import { join } from 'node:path'
 import bootstrap from './commands/bootstrap.ts'
+import { loadConfig } from './lib/config.ts'
 import { startCronScheduler } from './lib/cron.ts'
+import { runDatabaseMigrations } from './lib/database-migration.ts'
 import { start } from './lib/eventbus.ts'
 import patchBigInt from './lib/ext.ts'
 import { httpErrorHandler } from './lib/http-errors.ts'
@@ -19,9 +21,12 @@ import terminologyRoutes from './routes/terminology.ts'
 import translateRoutes from './routes/translate.ts'
 import userRoutes from './routes/user.ts'
 import workflowRoutes from './routes/workflow.ts'
+import workflowVersionRoutes from './routes/workflow-version.ts'
 
 const launch = async (): Promise<void> => {
-  await register()
+  const loadedConfig = await loadConfig()
+  await runDatabaseMigrations(loadedConfig)
+  await register(loadedConfig)
   const { config, discordClient, prisma, notification, logger, worker, redis } = diContainer.cradle
   try {
     const discordToken = config.get('discord').token
@@ -68,6 +73,7 @@ const launch = async (): Promise<void> => {
   await server.register(oauth)
   await server.register(userRoutes)
   await server.register(workflowRoutes)
+  await server.register(workflowVersionRoutes)
   await server.register(terminologyRoutes)
   await server.register(translateRoutes)
   await server.register(fediRoutes)
@@ -92,4 +98,5 @@ process.on('unhandledRejection', (err) => {
 
 launch().catch((e: unknown) => {
   process.stderr.write(`${e instanceof Error ? e.message : String(e)}\n`)
+  process.exitCode = 1
 })

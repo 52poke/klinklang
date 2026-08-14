@@ -4,7 +4,7 @@ import { FediverseService } from '../services/fediverse.ts'
 import { TerminologyService } from '../services/terminology.ts'
 import { TranslationService } from '../services/translation.ts'
 import { WikiService } from '../services/wiki.ts'
-import { loadConfig } from './config.ts'
+import { loadConfig, type Config } from './config.ts'
 import { getClient as getDatabaseClient } from './database.ts'
 import { getClient as getDiscordClient } from './discord.ts'
 import { getLogger } from './logger.ts'
@@ -14,9 +14,10 @@ import { getQueue } from './queue.ts'
 import { getRedis } from './redis.ts'
 import { getWorker } from './worker.ts'
 
-export async function register (): Promise<void> {
+export async function register (providedConfig?: Config): Promise<void> {
+  const config = providedConfig ?? await loadConfig()
   diContainer.register({
-    config: asValue(await loadConfig()),
+    config: asValue(config),
     prisma: asFunction(getDatabaseClient).singleton(),
     wikiService: asClass(WikiService).singleton(),
     mediaWikiOAuth: asClass(MediaWikiOAuth).singleton(),

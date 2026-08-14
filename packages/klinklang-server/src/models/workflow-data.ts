@@ -23,6 +23,7 @@ export function toWorkflowMetadata (workflow: Workflow): WorkflowMetadata {
     isPrivate: workflow.isPrivate,
     enabled: workflow.enabled,
     triggers: workflow.triggers,
+    currentRevision: workflow.currentRevision,
     createdAt: workflow.createdAt.toISOString(),
     updatedAt: workflow.updatedAt.toISOString(),
     userId: workflow.userId

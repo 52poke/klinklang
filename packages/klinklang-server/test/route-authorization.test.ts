@@ -31,6 +31,7 @@ const workflow = (id: string, isPrivate: boolean, userId: string | null): Workfl
   enabled: true,
   triggers: [{ type: 'TRIGGER_MANUAL' }],
   definition: { StartAt: 'Done', States: { Done: { Type: 'Succeed' } } },
+  currentRevision: 1,
   createdAt: new Date('2026-01-01T00:00:00Z'),
   updatedAt: new Date('2026-01-01T00:00:00Z'),
   userId
@@ -66,8 +67,7 @@ void describe('workflow route authorization', () => {
     app.setValidatorCompiler(validatorCompiler)
     app.setSerializerCompiler(serializerCompiler)
     app.setErrorHandler(httpErrorHandler)
-    const prisma = {
-      user: {
+    const user = {
         findUnique: async ({ where }: { where: { id: string } }) => {
           await Promise.resolve()
           const user = users.get(where.id)
@@ -82,8 +82,8 @@ void describe('workflow route authorization', () => {
             fediAccounts: []
           }
         }
-      },
-      workflow: {
+      }
+    const workflowDelegate = {
         findMany: async (query: unknown) => {
           await Promise.resolve()
           listQuery = query
@@ -93,12 +93,36 @@ void describe('workflow route authorization', () => {
           await Promise.resolve()
           return workflows.get(where.id) ?? null
         },
-        update: async ({ where, data }: { where: { id: string }; data: Partial<Workflow> }) => {
+        update: async ({ where, data }: {
+          where: { id: string }
+          data: Partial<Omit<Workflow, 'currentRevision'>> & {
+            currentRevision?: number | { increment: number }
+          }
+        }) => {
           await Promise.resolve()
           updateCount += 1
-          return { ...workflows.get(where.id), ...data }
+          const existing = workflows.get(where.id)
+          if (existing === undefined) {
+            throw new Error('missing workflow')
+          }
+          const currentRevision = typeof data.currentRevision === 'object'
+            ? existing.currentRevision + data.currentRevision.increment
+            : (data.currentRevision ?? existing.currentRevision)
+          return { ...existing, ...data, currentRevision }
         }
       }
+    const transaction = {
+      workflow: workflowDelegate,
+      workflowRevision: {
+        create: async () => await Promise.resolve({})
+      }
+    }
+    const prisma = {
+      user,
+      ...transaction,
+      $transaction: async <T>(callback: (client: typeof transaction) => Promise<T>): Promise<T> => (
+        await callback(transaction)
+      )
     }
     const notification = {
       sendMessage: async () => {

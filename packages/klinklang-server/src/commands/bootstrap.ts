@@ -1,12 +1,18 @@
 import { workflowCreateRequestSchema } from '@mudkipme/klinklang-domain'
-import type { Prisma, PrismaClient } from '@mudkipme/klinklang-prisma'
+import type { PrismaClient } from '@mudkipme/klinklang-prisma'
 import { findWorkspaceDir } from '@pnpm/find-workspace-dir'
 import { loadAll } from 'js-yaml'
 import { readFile, stat } from 'node:fs/promises'
 import { join } from 'node:path'
+import { isDeepStrictEqual } from 'node:util'
 import { z } from 'zod'
 import type { Config } from '../lib/config.ts'
 import { validateWorkflowCreatePayload } from '../lib/workflow-validation.ts'
+import {
+  createVersionedWorkflow,
+  toWorkflowSnapshot,
+  updateVersionedWorkflow
+} from '../models/workflow-revision.ts'
 
 const workflowConfigSchema = workflowCreateRequestSchema.extend({ user: z.string().optional() })
 export type WorkflowConfig = z.infer<typeof workflowConfigSchema>
@@ -23,39 +29,38 @@ export async function setupWorkflow (prisma: PrismaClient, workflowConfig: Workf
     throw new Error(`Invalid bootstrap workflow "${workflowConfig.name}": ${validation.issues.join('; ')}`)
   }
 
+  const { definition, triggers } = validation.data
+  const user = workflowConfig.user === undefined
+    ? null
+    : await prisma.user.findUnique({ where: { name: workflowConfig.user } })
   let workflow = await prisma.workflow.findFirst({ where: { name: workflowConfig.name } })
 
-  const { definition, triggers } = validation.data
-
   if (workflow === null) {
-    workflow = await prisma.workflow.create({
-      data: {
-        name: workflowConfig.name,
-        isPrivate: workflowConfig.isPrivate,
-        enabled: workflowConfig.enabled,
-        triggers: triggers as Prisma.InputJsonValue,
-        definition: definition as unknown as Prisma.InputJsonValue
-      }
+    workflow = await createVersionedWorkflow(prisma, {
+      name: workflowConfig.name,
+      isPrivate: workflowConfig.isPrivate,
+      enabled: workflowConfig.enabled,
+      triggers,
+      definition
+    }, user?.id ?? null, {
+      changeKind: 'BOOTSTRAP'
     })
-  } else {
-    workflow = await prisma.workflow.update({
-      where: { id: workflow.id },
-      data: {
-        definition: definition as unknown as Prisma.InputJsonValue
-      }
+  } else if (!isDeepStrictEqual(workflow.definition, definition)) {
+    workflow = await updateVersionedWorkflow(prisma, workflow, {
+      ...toWorkflowSnapshot(workflow),
+      definition
+    }, {
+      changeKind: 'BOOTSTRAP'
     })
   }
 
-  if (workflowConfig.user !== undefined) {
-    const user = await prisma.user.findUnique({ where: { name: workflowConfig.user } })
-    if (user !== null) {
-      await prisma.workflow.update({
-        where: { id: workflow.id },
-        data: {
-          userId: user.id
-        }
-      })
-    }
+  if (user !== null && workflow.userId !== user.id) {
+    await prisma.workflow.update({
+      where: { id: workflow.id },
+      data: {
+        userId: user.id
+      }
+    })
   }
 }
 

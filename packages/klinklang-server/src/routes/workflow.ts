@@ -14,18 +14,29 @@ import {
   workflowUpdateRequestSchema,
   workflowBadRequestResponseSchema
 } from '@mudkipme/klinklang-domain'
-import type { Prisma } from '@mudkipme/klinklang-prisma'
 import type { FastifyPluginCallbackZod } from '@fastify/type-provider-zod'
 import {
   forbiddenError,
+  workflowConflictError,
   workflowInstanceConflictError,
   workflowInstanceNotFoundError,
   workflowNotFoundError
 } from '../lib/errors.ts'
 import userMiddleware from '../middlewares/user.ts'
-import { canViewWorkflow, createInstanceWithWorkflow, getWorkflowInstances } from '../models/workflow.ts'
+import {
+  canCreateWorkflow,
+  canManageWorkflow,
+  canViewWorkflow,
+  createInstanceWithWorkflow,
+  getWorkflowInstances
+} from '../models/workflow.ts'
 import { parseWorkflowDefinition, parseWorkflowTriggers, toWorkflowMetadata } from '../models/workflow-data.ts'
 import WorkflowInstance from '../models/workflow-instance.ts'
+import {
+  createVersionedWorkflow,
+  updateVersionedWorkflow,
+  WorkflowVersionConflictError
+} from '../models/workflow-revision.ts'
 import { validateWorkflowCreateData, validateWorkflowUpdateData } from '../lib/workflow-validation.ts'
 
 const workflowRoutes: FastifyPluginCallbackZod = (fastify) => {
@@ -140,9 +151,7 @@ const workflowRoutes: FastifyPluginCallbackZod = (fastify) => {
       response: { 200: workflowMutationResponseSchema, 400: workflowBadRequestResponseSchema }
     },
     handler: async (request, reply) => {
-      const requesterGroups = request.user?.groups ?? []
-      const canCreate = requesterGroups.includes('sysop') || requesterGroups.includes('bot')
-      if (!canCreate) {
+      if (!canCreateWorkflow(request.user)) {
         throw forbiddenError()
       }
 
@@ -152,15 +161,9 @@ const workflowRoutes: FastifyPluginCallbackZod = (fastify) => {
         return
       }
 
-      const created = await prisma.workflow.create({
-        data: {
-          name: data.name,
-          isPrivate: data.isPrivate,
-          enabled: data.enabled,
-          triggers: data.triggers as Prisma.InputJsonValue,
-          definition: data.definition as unknown as Prisma.InputJsonValue,
-          userId: request.user?.id ?? null
-        }
+      const created = await createVersionedWorkflow(prisma, data, request.user?.id ?? null, {
+        changeKind: 'CREATE',
+        createdById: request.user?.id
       })
 
       await fastify.diContainer.cradle.notification.sendMessage({ type: 'WORKFLOW_EVENTBUS_UPDATE' })
@@ -285,14 +288,7 @@ const workflowRoutes: FastifyPluginCallbackZod = (fastify) => {
         throw workflowNotFoundError()
       }
 
-      const requester = request.user
-      const isOwner = requester?.id !== undefined && workflow.userId === requester.id
-      const isSysop = (requester?.groups ?? []).includes('sysop')
-      if (workflow.isPrivate) {
-        if (!isOwner) {
-          throw forbiddenError()
-        }
-      } else if (!isOwner && !isSysop) {
+      if (!canManageWorkflow(workflow, request.user)) {
         throw forbiddenError()
       }
 
@@ -308,15 +304,14 @@ const workflowRoutes: FastifyPluginCallbackZod = (fastify) => {
         return
       }
 
-      const updated = await prisma.workflow.update({
-        where: { id: workflow.id },
-        data: {
-          name: data.name,
-          isPrivate: data.isPrivate,
-          enabled: data.enabled,
-          triggers: data.triggers as Prisma.InputJsonValue,
-          definition: data.definition as unknown as Prisma.InputJsonValue
+      const updated = await updateVersionedWorkflow(prisma, workflow, data, {
+        changeKind: 'UPDATE',
+        createdById: request.user?.id
+      }).catch((error: unknown) => {
+        if (error instanceof WorkflowVersionConflictError) {
+          throw workflowConflictError(error.message)
         }
+        throw error
       })
 
       await fastify.diContainer.cradle.notification.sendMessage({ type: 'WORKFLOW_EVENTBUS_UPDATE' })

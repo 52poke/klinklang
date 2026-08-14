@@ -9,6 +9,21 @@ export function canViewWorkflow (
   return !workflow.isPrivate || (userId !== undefined && workflow.userId === userId)
 }
 
+export function canManageWorkflow (
+  workflow: Pick<Workflow, 'isPrivate' | 'userId'>,
+  user?: { id: string; groups: string[] } | null
+): boolean {
+  if (user === undefined || user === null) {
+    return false
+  }
+  const isOwner = workflow.userId === user.id
+  return workflow.isPrivate ? isOwner : (isOwner || user.groups.includes('sysop'))
+}
+
+export function canCreateWorkflow (user?: { groups: string[] } | null): boolean {
+  return user?.groups.some(group => group === 'sysop' || group === 'bot') ?? false
+}
+
 export async function getWorkflowInstances (workflow: Workflow, offset = 0, limit = 100): Promise<WorkflowInstance[]> {
   return await WorkflowInstance.getInstancesOfWorkflow(workflow.id, offset, limit)
 }

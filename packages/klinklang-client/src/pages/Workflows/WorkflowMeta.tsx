@@ -56,6 +56,9 @@ export const WorkflowMeta: React.FC<{ workflow: WorkflowMetadata }> = ({ workflo
           <span className='font-medium text-foreground'>Owner:</span> {workflow.userId ?? '-'}
         </div>
         <div>
+          <span className='font-medium text-foreground'>Current revision:</span> {workflow.currentRevision}
+        </div>
+        <div>
           <span className='font-medium text-foreground'>Created:</span> {formatDateTime(workflow.createdAt)}
         </div>
         <div>

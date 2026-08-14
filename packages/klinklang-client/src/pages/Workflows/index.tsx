@@ -18,6 +18,7 @@ import { Separator } from '../../components/ui/separator'
 import { useUserStore } from '../../store/user'
 import { useWorkflowListStore } from '../../store/workflows'
 import { WorkflowCreateDialog } from './WorkflowCreateDialog'
+import { WorkflowImportControl } from './WorkflowImportControl'
 
 const formatDateTime = (value: string): string => {
   const date = new Date(value)
@@ -74,12 +75,15 @@ export const Workflows: React.FC = () => {
         </div>
         <div className='flex items-center gap-2'>
           {canCreate && (
-            <WorkflowCreateDialog
-              userId={currentUser?.id ?? null}
-              onCreated={(workflow) => {
-                addWorkflow(workflow)
-              }}
-            />
+            <>
+              <WorkflowImportControl onImported={addWorkflow} />
+              <WorkflowCreateDialog
+                userId={currentUser?.id ?? null}
+                onCreated={(workflow) => {
+                  addWorkflow(workflow)
+                }}
+              />
+            </>
           )}
           <Button
             variant='outline'
@@ -119,6 +123,8 @@ export const Workflows: React.FC = () => {
                   <span>{workflow.enabled ? 'Enabled' : 'Disabled'}</span>
                   <span>•</span>
                   <span>{workflow.triggers.length} triggers</span>
+                  <span>•</span>
+                  <span>Revision {workflow.currentRevision}</span>
                 </div>
               </div>
               <div className='flex flex-col gap-2'>

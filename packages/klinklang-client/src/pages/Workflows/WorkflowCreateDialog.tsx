@@ -34,6 +34,7 @@ export const WorkflowCreateDialog: React.FC<WorkflowCreateDialogProps> = ({ user
     isPrivate: false,
     enabled: true,
     triggers: [],
+    currentRevision: 1,
     createdAt: now,
     updatedAt: now,
     userId: userId ?? null
