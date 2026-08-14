@@ -4,6 +4,7 @@ import { asValue } from 'awilix'
 import { deepEqual, equal } from 'node:assert/strict'
 import { after, before, describe, test } from 'node:test'
 import { fastify, type FastifyInstance, type FastifyRequest } from 'fastify'
+import type { Redis } from 'ioredis'
 import type { Notification } from '../src/lib/notification.ts'
 import workflowRoutes from '../src/routes/workflow.ts'
 import userRoutes from '../src/routes/user.ts'
@@ -92,10 +93,14 @@ void describe('workflow route authorization', () => {
         revokedAccount = { userId, accountId }
       }
     }
+    const redis = {
+      get: async () => await Promise.resolve(null)
+    }
     diContainer.register({
       prisma: asValue(prisma as unknown as PrismaClient),
       notification: asValue(notification as unknown as Notification),
-      fediverseService: asValue(fediverseService as unknown as FediverseService)
+      fediverseService: asValue(fediverseService as unknown as FediverseService),
+      redis: asValue(redis as unknown as Redis)
     })
 
     await app.register(fastifyAwilixPlugin)
@@ -183,6 +188,29 @@ void describe('workflow route authorization', () => {
     equal(allowedPublic.statusCode, 200)
     equal(deniedPrivate.statusCode, 403)
     equal(updateCount, 1)
+  })
+
+  void test('protects execution inspection and control endpoints', async () => {
+    const missingInstanceId = '00000000-0000-4000-8000-000000000099'
+    const deniedRetry = await app.inject({
+      method: 'POST',
+      url: `/api/workflow/${privateWorkflowId}/instances/${missingInstanceId}/retry`,
+      headers: { 'x-test-user': otherId }
+    })
+    const deniedCancel = await app.inject({
+      method: 'POST',
+      url: `/api/workflow/${privateWorkflowId}/instances/${missingInstanceId}/cancel`,
+      headers: { 'x-test-user': sysopId }
+    })
+    const ownerInspection = await app.inject({
+      method: 'GET',
+      url: `/api/workflow/${privateWorkflowId}/instances/${missingInstanceId}`,
+      headers: { 'x-test-user': ownerId }
+    })
+
+    equal(deniedRetry.statusCode, 403)
+    equal(deniedCancel.statusCode, 403)
+    equal(ownerInspection.statusCode, 404)
   })
 
   void test('requires login for account revocation and scopes it to the authenticated user', async () => {

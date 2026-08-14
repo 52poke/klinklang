@@ -1,5 +1,6 @@
 import {
   workflowDetailResponseSchema,
+  workflowInstanceResponseSchema,
   workflowInstancesResponseSchema,
   workflowListResponseSchema,
   workflowMutationResponseSchema,
@@ -10,11 +11,17 @@ import {
 } from '@mudkipme/klinklang-domain'
 import type { Prisma } from '@mudkipme/klinklang-prisma'
 import type { FastifyPluginCallback, FastifyRequest } from 'fastify'
-import { forbiddenError, workflowNotFoundError } from '../lib/errors.ts'
+import {
+  forbiddenError,
+  workflowInstanceConflictError,
+  workflowInstanceNotFoundError,
+  workflowNotFoundError
+} from '../lib/errors.ts'
 import { parsePagination } from '../lib/pagination.ts'
 import userMiddleware from '../middlewares/user.ts'
 import { canViewWorkflow, createInstanceWithWorkflow, getWorkflowInstances } from '../models/workflow.ts'
 import { parseWorkflowDefinition, parseWorkflowTriggers, toWorkflowMetadata } from '../models/workflow-data.ts'
+import WorkflowInstance from '../models/workflow-instance.ts'
 import { validateWorkflowCreatePayload, validateWorkflowUpdatePayload } from '../lib/workflow-validation.ts'
 
 const workflowRoutes: FastifyPluginCallback = (fastify) => {
@@ -39,6 +46,74 @@ const workflowRoutes: FastifyPluginCallback = (fastify) => {
       await reply.send(workflowListResponseSchema.parse({
         workflows: workflows.map(toWorkflowMetadata)
       }))
+    }
+  })
+
+  fastify.route({
+    method: 'GET',
+    url: '/api/workflow/:workflowId/instances/:instanceId',
+    preHandler: userMiddleware(true),
+    handler: async (request: FastifyRequest<{
+      Params: { workflowId: string; instanceId: string }
+    }>) => {
+      const workflow = await prisma.workflow.findUnique({ where: { id: request.params.workflowId } })
+      if (workflow === null) throw workflowNotFoundError()
+      if (!canViewWorkflow(workflow, request.user?.id)) throw forbiddenError()
+      const instance = await WorkflowInstance.getInstance(workflow.id, request.params.instanceId)
+      if (instance === null) throw workflowInstanceNotFoundError()
+      return workflowInstanceResponseSchema.parse({ instance: instance.toJSON() })
+    }
+  })
+
+  fastify.route({
+    method: 'POST',
+    url: '/api/workflow/:workflowId/instances/:instanceId/retry',
+    preHandler: userMiddleware(true),
+    handler: async (request: FastifyRequest<{
+      Params: { workflowId: string; instanceId: string }
+    }>) => {
+      const workflow = await prisma.workflow.findUnique({ where: { id: request.params.workflowId } })
+      if (workflow === null) throw workflowNotFoundError()
+      const isOwner = request.user?.id !== undefined && workflow.userId === request.user.id
+      const isSysop = (request.user?.groups ?? []).includes('sysop')
+      if (!isOwner && (workflow.isPrivate || !isSysop)) throw forbiddenError()
+      const instance = await WorkflowInstance.getInstance(workflow.id, request.params.instanceId)
+      if (instance === null) throw workflowInstanceNotFoundError()
+      try {
+        await instance.retry()
+      } catch (error) {
+        if (error instanceof Error && error.message.startsWith('WORKFLOW_INSTANCE_NOT_RETRYABLE')) {
+          throw workflowInstanceConflictError(error.message)
+        }
+        throw error
+      }
+      return workflowInstanceResponseSchema.parse({ instance: instance.toJSON() })
+    }
+  })
+
+  fastify.route({
+    method: 'POST',
+    url: '/api/workflow/:workflowId/instances/:instanceId/cancel',
+    preHandler: userMiddleware(true),
+    handler: async (request: FastifyRequest<{
+      Params: { workflowId: string; instanceId: string }
+    }>) => {
+      const workflow = await prisma.workflow.findUnique({ where: { id: request.params.workflowId } })
+      if (workflow === null) throw workflowNotFoundError()
+      const isOwner = request.user?.id !== undefined && workflow.userId === request.user.id
+      const isSysop = (request.user?.groups ?? []).includes('sysop')
+      if (!isOwner && (workflow.isPrivate || !isSysop)) throw forbiddenError()
+      const instance = await WorkflowInstance.getInstance(workflow.id, request.params.instanceId)
+      if (instance === null) throw workflowInstanceNotFoundError()
+      try {
+        await instance.cancel()
+      } catch (error) {
+        if (error instanceof Error && error.message === 'WORKFLOW_INSTANCE_NOT_CANCELLABLE') {
+          throw workflowInstanceConflictError(error.message)
+        }
+        throw error
+      }
+      return workflowInstanceResponseSchema.parse({ instance: instance.toJSON() })
     }
   })
 

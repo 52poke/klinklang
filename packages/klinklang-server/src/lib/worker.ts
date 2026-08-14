@@ -22,14 +22,19 @@ export const getWorker = ({ config, logger }: { config: Config; logger: Logger }
   worker.on('failed', (job, err) => {
     logger.error(`job ${job?.id ?? ''} failed: ${err.message}`)
     if (job?.data !== undefined) {
-      const attempts = job.opts.attempts ?? 1
-      if (job.attemptsMade < attempts) {
+      if (err.message === 'WORKFLOW_INSTANCE_CANCELLED') {
         return
       }
+      const attempts = job.opts.attempts ?? 1
+      const willRetry = job.attemptsMade < attempts
       void WorkflowInstance.getInstance(job.data.workflowId, job.data.instanceId)
         .then(async (instance) => {
           if (instance !== null) {
-            await instance.fail()
+            if (job.id === undefined) {
+              await instance.fail(err.message)
+            } else {
+              await instance.recordJobFailure(job.id, err.message, willRetry)
+            }
           }
         })
         .catch((error: unknown) => {

@@ -47,17 +47,39 @@ export abstract class ActionWorker<T extends ActionContract> {
     }
     await instance.started(this.jobId, this.stateName)
     const output = outputSchema.parse(await this.process()) as T['output']
-    await instance.update(this.stateName, output)
-    const transition = await instance.createNextJob<T>(this.stateName)
+    const latest = await this.getInstance()
+    if (latest === null) {
+      throw new Error('WORKFLOW_INSTANCE_NOT_FOUND')
+    }
+    if (latest.status === 'cancelled') {
+      return { output }
+    }
+    await latest.update(this.jobId, this.stateName, output)
+    const updated = await this.getInstance()
+    if (updated === null) {
+      throw new Error('WORKFLOW_INSTANCE_NOT_FOUND')
+    }
+    if (updated.status === 'cancelled') {
+      return { output }
+    }
+    const transition = await updated.createNextJob<T>(this.stateName)
     if (transition.status === 'completed') {
-      await instance.complete()
+      await updated.complete()
     } else if (transition.status === 'failed') {
-      await instance.fail()
+      await updated.fail(transition.reason)
     }
     return {
       output,
       nextJobId: transition.status === 'scheduled' ? transition.job.id : undefined
     }
+  }
+
+  protected async log (
+    message: string,
+    level: 'debug' | 'info' | 'warn' | 'error' = 'info'
+  ): Promise<void> {
+    const instance = await this.getInstance()
+    await instance?.appendStepLog(this.jobId, level, message)
   }
 
   public abstract process (): Promise<T['output']> | T['output']

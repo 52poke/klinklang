@@ -251,22 +251,49 @@ export const workflowMetadataSchema = z.object({
   userId: z.uuid().nullable()
 }).strict()
 
+export const workflowStepLogSchema = z.object({
+  timestamp: z.number().int(),
+  level: z.enum(['debug', 'info', 'warn', 'error']),
+  message: z.string()
+}).strict()
+
+export const workflowStepExecutionSchema = z.object({
+  jobId: z.uuid(),
+  stateName: z.string(),
+  actionType: z.string(),
+  status: z.enum(['queued', 'running', 'completed', 'failed', 'cancelled']),
+  input: z.unknown().optional(),
+  output: z.unknown().optional(),
+  failureReason: z.string().optional(),
+  attempts: z.number().int().nonnegative(),
+  queuedAt: z.number().int(),
+  startedAt: z.number().int().optional(),
+  completedAt: z.number().int().optional(),
+  durationMs: z.number().int().nonnegative().optional(),
+  retryOfJobId: z.uuid().optional(),
+  logs: z.array(workflowStepLogSchema)
+}).strict()
+
 export const workflowInstanceSchema = z.object({
   workflowId: z.uuid(),
   instanceId: z.uuid(),
   firstJobId: z.uuid(),
   currentJobId: z.uuid().optional(),
   currentStateName: z.string().optional(),
-  status: z.enum(['pending', 'running', 'failed', 'completed']),
+  status: z.enum(['pending', 'running', 'failed', 'completed', 'cancelled']),
   createdAt: z.number().int(),
   startedAt: z.number().int().optional(),
   completedAt: z.number().int().optional(),
+  failureReason: z.string().optional(),
   trigger: workflowTriggerSchema.optional(),
-  context: z.record(z.string(), z.unknown())
+  context: z.record(z.string(), z.unknown()),
+  steps: z.array(workflowStepExecutionSchema).default([])
 }).strict()
 
 export type WorkflowMetadata = z.infer<typeof workflowMetadataSchema>
 export type WorkflowInstance = z.infer<typeof workflowInstanceSchema>
+export type WorkflowStepExecution = z.infer<typeof workflowStepExecutionSchema>
+export type WorkflowStepLog = z.infer<typeof workflowStepLogSchema>
 
 export const workflowListResponseSchema = z.object({ workflows: z.array(workflowMetadataSchema) }).strict()
 export const workflowDetailResponseSchema = z.object({
@@ -274,6 +301,7 @@ export const workflowDetailResponseSchema = z.object({
   definition: stateMachineDefinitionSchema
 }).strict()
 export const workflowInstancesResponseSchema = z.object({ instances: z.array(workflowInstanceSchema) }).strict()
+export const workflowInstanceResponseSchema = z.object({ instance: workflowInstanceSchema }).strict()
 export const workflowMutationResponseSchema = z.object({ workflow: workflowMetadataSchema }).strict()
 export const workflowTriggerResponseSchema = z.object({
   workflow: workflowMetadataSchema,
@@ -287,6 +315,7 @@ export const workflowValidationErrorResponseSchema = z.object({
 export type WorkflowListResponse = z.infer<typeof workflowListResponseSchema>
 export type WorkflowDetailResponse = z.infer<typeof workflowDetailResponseSchema>
 export type WorkflowInstancesResponse = z.infer<typeof workflowInstancesResponseSchema>
+export type WorkflowInstanceResponse = z.infer<typeof workflowInstanceResponseSchema>
 export type WorkflowMutationResponse = z.infer<typeof workflowMutationResponseSchema>
 export type WorkflowTriggerResponse = z.infer<typeof workflowTriggerResponseSchema>
 export type WorkflowValidationErrorResponse = z.infer<typeof workflowValidationErrorResponseSchema>

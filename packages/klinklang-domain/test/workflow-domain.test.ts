@@ -6,6 +6,7 @@ import {
   choiceRuleSchema,
   workflowCreateRequestSchema,
   workflowDetailResponseSchema,
+  workflowInstanceSchema,
   workflowMetadataSchema
 } from '../src/index.ts'
 
@@ -93,5 +94,35 @@ void describe('workflow domain schemas', () => {
       And: [{ Variable: '$.kind', StringEquals: 'article', Next: 'Nested' }],
       Next: 'Publish'
     }).success, false)
+  })
+
+  void test('parses execution inspection history and remains compatible with legacy records', () => {
+    const legacy = workflowInstanceSchema.parse({
+      workflowId,
+      instanceId: '00000000-0000-4000-8000-000000000002',
+      firstJobId: '00000000-0000-4000-8000-000000000003',
+      status: 'pending',
+      createdAt: 1,
+      context: {}
+    })
+    deepEqual(legacy.steps, [])
+
+    const cancelled = workflowInstanceSchema.safeParse({
+      ...legacy,
+      status: 'cancelled',
+      failureReason: 'Cancelled by user.',
+      steps: [{
+        jobId: legacy.firstJobId,
+        stateName: 'Fetch',
+        actionType: 'REQUEST',
+        status: 'cancelled',
+        attempts: 0,
+        queuedAt: 1,
+        completedAt: 2,
+        durationMs: 1,
+        logs: [{ timestamp: 2, level: 'warn', message: 'Cancelled by user.' }]
+      }]
+    })
+    equal(cancelled.success, true)
   })
 })

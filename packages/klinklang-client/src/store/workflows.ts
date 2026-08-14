@@ -1,5 +1,6 @@
 import {
   workflowDetailResponseSchema,
+  workflowInstanceResponseSchema,
   workflowInstancesResponseSchema,
   workflowListResponseSchema,
   workflowTriggerResponseSchema,
@@ -180,8 +181,12 @@ export interface WorkflowInstancesState {
   workflowId: string | null
   instances: WorkflowInstance[]
   loading: boolean
+  mutating: Record<string, 'retry' | 'cancel' | undefined>
+  lastUpdatedAt: number | null
   error: string | null
-  fetchInstances: (workflowId: string) => Promise<void>
+  fetchInstances: (workflowId: string, silent?: boolean) => Promise<void>
+  retryInstance: (workflowId: string, instanceId: string) => Promise<boolean>
+  cancelInstance: (workflowId: string, instanceId: string) => Promise<boolean>
   setError: (message: string | null) => void
   clear: () => void
 }
@@ -190,9 +195,11 @@ export const useWorkflowInstancesStore = create<WorkflowInstancesState>((set) =>
   workflowId: null,
   instances: [],
   loading: false,
+  mutating: {},
+  lastUpdatedAt: null,
   error: null,
-  fetchInstances: async (workflowId: string) => {
-    set({ loading: true, error: null, workflowId })
+  fetchInstances: async (workflowId: string, silent = false) => {
+    set({ loading: !silent, error: null, workflowId })
     try {
       const response = await fetch(`/api/workflow/${workflowId}/instances`)
       if (response.status === 401) {
@@ -204,15 +211,57 @@ export const useWorkflowInstancesStore = create<WorkflowInstancesState>((set) =>
         return
       }
       const data = workflowInstancesResponseSchema.parse(await readJson(response))
-      set({ instances: data.instances, loading: false })
+      set({ instances: data.instances, loading: false, lastUpdatedAt: Date.now() })
     } catch (err) {
       set({ error: err instanceof Error ? err.message : 'Failed to load workflow instances.', loading: false })
+    }
+  },
+  retryInstance: async (workflowId, instanceId) => {
+    set((state) => ({ mutating: { ...state.mutating, [instanceId]: 'retry' }, error: null }))
+    try {
+      const response = await fetch(`/api/workflow/${workflowId}/instances/${instanceId}/retry`, { method: 'POST' })
+      if (!response.ok) {
+        set({ error: `Failed to retry workflow instance (HTTP ${response.status}).` })
+        return false
+      }
+      const { instance } = workflowInstanceResponseSchema.parse(await readJson(response))
+      set((state) => ({
+        instances: state.instances.map(candidate => candidate.instanceId === instanceId ? instance : candidate),
+        lastUpdatedAt: Date.now()
+      }))
+      return true
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to retry workflow instance.' })
+      return false
+    } finally {
+      set((state) => ({ mutating: { ...state.mutating, [instanceId]: undefined } }))
+    }
+  },
+  cancelInstance: async (workflowId, instanceId) => {
+    set((state) => ({ mutating: { ...state.mutating, [instanceId]: 'cancel' }, error: null }))
+    try {
+      const response = await fetch(`/api/workflow/${workflowId}/instances/${instanceId}/cancel`, { method: 'POST' })
+      if (!response.ok) {
+        set({ error: `Failed to cancel workflow instance (HTTP ${response.status}).` })
+        return false
+      }
+      const { instance } = workflowInstanceResponseSchema.parse(await readJson(response))
+      set((state) => ({
+        instances: state.instances.map(candidate => candidate.instanceId === instanceId ? instance : candidate),
+        lastUpdatedAt: Date.now()
+      }))
+      return true
+    } catch (err) {
+      set({ error: err instanceof Error ? err.message : 'Failed to cancel workflow instance.' })
+      return false
+    } finally {
+      set((state) => ({ mutating: { ...state.mutating, [instanceId]: undefined } }))
     }
   },
   setError: (message) => {
     set({ error: message })
   },
   clear: () => {
-    set({ workflowId: null, instances: [], loading: false, error: null })
+    set({ workflowId: null, instances: [], loading: false, mutating: {}, lastUpdatedAt: null, error: null })
   }
 }))

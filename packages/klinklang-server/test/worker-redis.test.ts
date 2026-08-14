@@ -3,7 +3,7 @@ import type { Workflow } from '@mudkipme/klinklang-prisma'
 import { asValue } from 'awilix'
 import type { Job, JobsOptions, Queue } from 'bullmq'
 import type { Redis } from 'ioredis'
-import { deepEqual, equal, ok } from 'node:assert/strict'
+import { deepEqual, equal, ok, rejects } from 'node:assert/strict'
 import { beforeEach, describe, test } from 'node:test'
 import { processAction } from '../src/actions/register.ts'
 import type { ActionJobData, ActionJobResult } from '../src/actions/interfaces.ts'
@@ -76,6 +76,18 @@ void describe('worker and Redis integration', () => {
         const job = { id: options.jobId, name, data }
         queuedJobs.push({ ...job, opts: options })
         return job
+      },
+      getJob: async (jobId: string) => {
+        await Promise.resolve()
+        const queued = queuedJobs.find(candidate => candidate.id === jobId)
+        if (queued === undefined) return undefined
+        return {
+          getState: async () => await Promise.resolve('waiting'),
+          remove: async () => {
+            await Promise.resolve()
+            queuedJobs = queuedJobs.filter(candidate => candidate.id !== jobId)
+          }
+        }
       }
     }
     const config = {
@@ -115,6 +127,13 @@ void describe('worker and Redis integration', () => {
     const persisted = await WorkflowInstance.getInstance(workflowId, instance.instanceId)
     ok(persisted !== null)
     equal(persisted.status, 'completed')
+    equal(persisted.steps.length, 1)
+    equal(persisted.steps[0].status, 'completed')
+    equal(persisted.steps[0].attempts, 1)
+    deepEqual(persisted.steps[0].input, { text: 'answer: 42', pattern: '\\d+' })
+    deepEqual(persisted.steps[0].output, { matches: ['42'] })
+    ok(persisted.steps[0].durationMs !== undefined)
+    ok(persisted.steps[0].logs.some(log => log.message === 'Step completed.'))
     deepEqual(persisted.context, {
       payload: { text: 'answer: 42' },
       match: { matches: ['42'] },
@@ -140,6 +159,40 @@ void describe('worker and Redis integration', () => {
     equal(queuedJobs.length, 0)
     ok(persisted !== null)
     equal(persisted.status, 'failed')
+    equal(persisted.failureReason, 'REJECTED')
     ok(persisted.completedAt !== undefined)
+    await rejects(persisted.retry(), /WORKFLOW_INSTANCE_NOT_RETRYABLE/v)
+  })
+
+  void test('records failure details and manually retries the failed step', async () => {
+    const instance = await WorkflowInstance.create(regexpWorkflow, { type: 'TRIGGER_MANUAL' }, { text: 'no match' })
+    await instance.started(instance.firstJobId, 'Match')
+    await instance.recordJobFailure(instance.firstJobId, 'Remote service unavailable', false)
+
+    equal(instance.status, 'failed')
+    equal(instance.failureReason, 'Remote service unavailable')
+    equal(instance.steps[0].status, 'failed')
+    equal(instance.steps[0].failureReason, 'Remote service unavailable')
+
+    await instance.retry()
+
+    equal(instance.status, 'pending')
+    equal(instance.failureReason, undefined)
+    equal(instance.steps.length, 2)
+    equal(instance.steps[1].status, 'queued')
+    equal(instance.steps[1].retryOfJobId, instance.firstJobId)
+    equal(queuedJobs.length, 2)
+  })
+
+  void test('cancels and removes queued work while preserving inspection history', async () => {
+    const instance = await WorkflowInstance.create(regexpWorkflow, { type: 'TRIGGER_MANUAL' }, { text: '42' })
+
+    await instance.cancel()
+
+    equal(instance.status, 'cancelled')
+    equal(instance.failureReason, 'Cancelled by user.')
+    equal(instance.steps[0].status, 'cancelled')
+    ok(instance.steps[0].logs.some(log => log.message === 'Queued job removed.'))
+    equal(queuedJobs.length, 0)
   })
 })
