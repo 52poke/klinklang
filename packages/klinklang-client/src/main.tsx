@@ -9,6 +9,12 @@ import { Workflows } from './pages/Workflows'
 import { WorkflowDetail } from './pages/Workflows/Detail'
 import { WorkflowInstances } from './pages/Workflows/Instances'
 import './globals.css'
+import '@xyflow/react/dist/style.css'
+
+const WorkflowEditor = React.lazy(async () => {
+  const module = await import('./pages/Workflows/Editor')
+  return { default: module.WorkflowEditor }
+})
 
 const router = createBrowserRouter([
   {
@@ -34,6 +40,10 @@ const router = createBrowserRouter([
       {
         path: '/pages/workflows/:workflowId/instances',
         element: <WorkflowInstances />
+      },
+      {
+        path: '/pages/workflows/:workflowId/edit',
+        element: <React.Suspense fallback={<div className='text-sm text-muted-foreground'>Loading editor…</div>}><WorkflowEditor /></React.Suspense>
       },
       {
         path: '/pages/settings',

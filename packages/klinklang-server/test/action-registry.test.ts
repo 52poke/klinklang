@@ -3,6 +3,7 @@ import { describe, test } from 'node:test'
 import {
   SUPPORTED_ACTION_TYPES,
   actionRegistry,
+  getActionCatalog,
   getActionJobOptions,
   isActionType,
   validateActionInput
@@ -33,5 +34,17 @@ void describe('action registry', () => {
       backoff: { type: 'exponential', delay: 1000 }
     })
     equal(getActionJobOptions('DISCORD_MESSAGE', 'job-id').attempts, 1)
+  })
+
+  void test('publishes serializable schemas and UI metadata from the same entries', () => {
+    const catalog = getActionCatalog()
+    deepEqual(catalog.map(action => action.type), SUPPORTED_ACTION_TYPES)
+    const request = catalog.find(action => action.type === 'REQUEST')
+    ok(request !== undefined)
+    const properties = request.inputSchema.properties
+    ok(properties !== null && typeof properties === 'object')
+    deepEqual((properties as Record<string, Record<string, unknown>>).method['x-ui-options'], [
+      'GET', 'POST', 'PUT', 'PATCH', 'DELETE'
+    ])
   })
 })

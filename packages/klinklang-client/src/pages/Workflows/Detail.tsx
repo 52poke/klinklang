@@ -71,12 +71,17 @@ export const WorkflowDetail: React.FC = () => {
             <Link to={`/pages/workflows/${workflowId ?? ''}/instances`}>Instances</Link>
           </Button>
           {workflow !== null && definition !== null && canEdit && (
-            <WorkflowEditDialog
-              workflowId={workflowId ?? ''}
-              workflow={workflow}
-              definition={definition}
-              onUpdated={handleWorkflowUpdated}
-            />
+            <>
+              <Button asChild>
+                <Link to={`/pages/workflows/${workflowId ?? ''}/edit`}>Visual editor</Link>
+              </Button>
+              <WorkflowEditDialog
+                workflowId={workflowId ?? ''}
+                workflow={workflow}
+                definition={definition}
+                onUpdated={handleWorkflowUpdated}
+              />
+            </>
           )}
           <Button
             variant='outline'

@@ -117,7 +117,7 @@ export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
       return
     }
 
-    const payload: WorkflowUpdateRequest = {}
+    const payload: WorkflowUpdateRequest = { expectedRevision: workflow.currentRevision }
     if (formState.name !== initialForm.name) {
       payload.name = formState.name
     }
@@ -134,7 +134,7 @@ export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
       payload.definition = definitionPayload
     }
 
-    if (mode === 'edit' && Object.keys(payload).length === 0) {
+    if (mode === 'edit' && Object.keys(payload).length === 1) {
       setSaveSuccess('No changes to save.')
       return
     }
@@ -198,7 +198,8 @@ export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
     parseDefinition,
     triggerDrafts,
     mode,
-    workflowId
+    workflowId,
+    workflow.currentRevision
   ])
 
   return (

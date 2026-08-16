@@ -2,6 +2,7 @@ import safeRegex from 'safe-regex'
 import { z } from 'zod'
 
 export * from './transitions.js'
+export * from './workflow-graph.js'
 
 export const jsonValueSchema = z.json()
 export type JsonValue = z.infer<typeof jsonValueSchema>
@@ -235,8 +236,10 @@ export const workflowCreateRequestSchema = z.object({
   definition: stateMachineDefinitionSchema
 }).strict()
 
-export const workflowUpdateRequestSchema = workflowCreateRequestSchema.partial().strict().superRefine((data, context) => {
-  if (Object.keys(data).length === 0) {
+export const workflowUpdateRequestSchema = workflowCreateRequestSchema.partial().extend({
+  expectedRevision: z.number().int().positive()
+}).strict().superRefine((data, context) => {
+  if (Object.keys(data).every(key => key === 'expectedRevision')) {
     context.addIssue({ code: 'custom', message: 'payload must include at least one field' })
   }
 })
@@ -311,6 +314,47 @@ export type WorkflowRevisionParams = z.infer<typeof workflowRevisionParamsSchema
 export type WorkflowDiffQuery = z.infer<typeof workflowDiffQuerySchema>
 export type WorkflowListQuery = z.infer<typeof workflowListQuerySchema>
 export type WorkflowInstancesQuery = z.infer<typeof workflowInstancesQuerySchema>
+
+export const actionCategorySchema = z.enum([
+  'data',
+  'network',
+  'notification',
+  'transformation',
+  'wiki'
+])
+export const actionSideEffectSchema = z.enum(['none', 'read', 'write'])
+export const actionIdempotencySchema = z.enum(['idempotent', 'conditional', 'non-idempotent'])
+export const actionJsonSchema = z.record(z.string(), z.unknown())
+export const actionCatalogEntrySchema = z.object({
+  type: z.string().min(1),
+  display: z.object({
+    label: z.string().min(1),
+    description: z.string(),
+    category: actionCategorySchema
+  }).strict(),
+  inputSchema: actionJsonSchema,
+  outputSchema: actionJsonSchema,
+  timeoutMs: z.number().int().positive(),
+  retry: z.object({
+    attempts: z.number().int().positive(),
+    backoff: z.object({
+      type: z.enum(['fixed', 'exponential']),
+      delay: z.number().int().nonnegative()
+    }).strict()
+  }).strict(),
+  sideEffect: actionSideEffectSchema,
+  idempotency: actionIdempotencySchema
+}).strict()
+export const actionCatalogResponseSchema = z.object({
+  actions: z.array(actionCatalogEntrySchema)
+}).strict()
+
+export type ActionCategory = z.infer<typeof actionCategorySchema>
+export type ActionSideEffect = z.infer<typeof actionSideEffectSchema>
+export type ActionIdempotency = z.infer<typeof actionIdempotencySchema>
+export type ActionJsonSchema = z.infer<typeof actionJsonSchema>
+export type ActionCatalogEntry = z.infer<typeof actionCatalogEntrySchema>
+export type ActionCatalogResponse = z.infer<typeof actionCatalogResponseSchema>
 
 export const workflowMetadataSchema = z.object({
   id: z.uuid(),

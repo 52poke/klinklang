@@ -184,10 +184,18 @@ void describe('workflow versioning routes', () => {
       method: 'PUT',
       url: `/api/workflow/${workflowId}`,
       headers: { 'x-test-user': ownerId },
-      payload: { name: 'Changed workflow' }
+      payload: { name: 'Changed workflow', expectedRevision: 1 }
     })
     equal(updated.statusCode, 200)
     equal(updated.json<{ workflow: { currentRevision: number } }>().workflow.currentRevision, 2)
+
+    const stale = await app.inject({
+      method: 'PUT',
+      url: `/api/workflow/${workflowId}`,
+      headers: { 'x-test-user': ownerId },
+      payload: { name: 'Stale overwrite', expectedRevision: 1 }
+    })
+    equal(stale.statusCode, 409)
 
     const diff = await app.inject({
       method: 'GET',

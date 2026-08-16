@@ -1,5 +1,5 @@
 import {
-  getStateTransitions,
+  validateWorkflowGraph,
   workflowCreateRequestSchema,
   workflowUpdateRequestSchema,
   type StateMachineDefinition,
@@ -135,29 +135,8 @@ function hasDynamicParameter (value: unknown): boolean {
 }
 
 function validateStateMachineDefinition (definition: StateMachineDefinition): string[] {
-  const issues: string[] = []
+  const issues = validateWorkflowGraph(definition)
   const states = definition.States
-  const stateNames = Object.keys(states)
-
-  if (stateNames.length === 0) {
-    issues.push('definition.States: must define at least one state')
-    return issues
-  }
-
-  if (!(definition.StartAt in states)) {
-    issues.push(`definition.StartAt: ${definition.StartAt} does not exist in States`)
-  }
-
-  const edges = new Map<string, Set<string>>()
-  const addEdge = (from: string, to: string, path: string): void => {
-    if (!(to in states)) {
-      issues.push(`${path}: state ${to} does not exist`)
-      return
-    }
-    const list = edges.get(from) ?? new Set<string>()
-    list.add(to)
-    edges.set(from, list)
-  }
 
   for (const [stateName, state] of Object.entries(states)) {
     switch (state.Type) {
@@ -178,7 +157,6 @@ function validateStateMachineDefinition (definition: StateMachineDefinition): st
           issues.push(`States.${stateName}.ResultPath: unsupported result path`)
         }
         validateParameterPaths(state.Parameters, `States.${stateName}.Parameters`, issues)
-        validateNextOrEnd(stateName, state, issues)
         break
       }
       case 'Pass': {
@@ -189,7 +167,6 @@ function validateStateMachineDefinition (definition: StateMachineDefinition): st
           issues.push(`States.${stateName}.ResultPath: unsupported result path`)
         }
         validateParameterPaths(state.Parameters, `States.${stateName}.Parameters`, issues)
-        validateNextOrEnd(stateName, state, issues)
         break
       }
       case 'Choice': {
@@ -207,105 +184,7 @@ function validateStateMachineDefinition (definition: StateMachineDefinition): st
       case 'Fail':
         break
     }
-    for (const transition of getStateTransitions(state)) {
-      const path = transition.kind === 'choice'
-        ? `States.${stateName}.Choices.${transition.index}.Next`
-        : transition.kind === 'default'
-          ? `States.${stateName}.Default`
-          : `States.${stateName}.Next`
-      addEdge(stateName, transition.target, path)
-    }
-  }
-
-  const reachable = new Set<string>()
-  if (definition.StartAt in states) {
-    const stack = [definition.StartAt]
-    while (stack.length > 0) {
-      const current = stack.pop()
-      if (current === undefined) {
-        break
-      }
-      if (reachable.has(current)) {
-        continue
-      }
-      reachable.add(current)
-      const neighbors = edges.get(current)
-      if (neighbors === undefined) {
-        continue
-      }
-      for (const next of neighbors) {
-        stack.push(next)
-      }
-    }
-  }
-
-  const terminals = new Set<string>()
-  for (const [stateName, state] of Object.entries(states)) {
-    const type = state.Type
-    if (type === 'Succeed' || type === 'Fail') {
-      terminals.add(stateName)
-      continue
-    }
-    if ((type === 'Task' || type === 'Pass') && state.End === true) {
-      terminals.add(stateName)
-    }
-  }
-
-  if (terminals.size === 0) {
-    issues.push('definition: workflow must include at least one terminal state')
-  }
-
-  const reverseEdges = new Map<string, Set<string>>()
-  for (const [from, targets] of edges.entries()) {
-    for (const target of targets) {
-      const list = reverseEdges.get(target) ?? new Set<string>()
-      list.add(from)
-      reverseEdges.set(target, list)
-    }
-  }
-
-  const canReachTerminal = new Set<string>()
-  const reverseStack = Array.from(terminals)
-  while (reverseStack.length > 0) {
-    const current = reverseStack.pop()
-    if (current === undefined) {
-      break
-    }
-    if (canReachTerminal.has(current)) {
-      continue
-    }
-    canReachTerminal.add(current)
-    const prevs = reverseEdges.get(current)
-    if (prevs === undefined) {
-      continue
-    }
-    for (const prev of prevs) {
-      reverseStack.push(prev)
-    }
-  }
-
-  for (const stateName of reachable) {
-    if (!canReachTerminal.has(stateName)) {
-      issues.push(`States.${stateName}: cannot reach a terminal state (endless loop)`)
-    }
   }
 
   return issues
-}
-
-function validateNextOrEnd (
-  stateName: string,
-  state: { Next?: string; End?: boolean },
-  issues: string[]
-): void {
-  const end = state.End === true
-  const hasNext = state.Next !== undefined
-  if (end && hasNext) {
-    issues.push(`States.${stateName}: cannot have both End and Next`)
-  }
-  if (!end) {
-    if (state.Next === undefined) {
-      issues.push(`States.${stateName}.Next: must be provided when End is not true`)
-    }
-  }
 }

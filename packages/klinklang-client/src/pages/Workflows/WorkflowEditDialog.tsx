@@ -29,7 +29,7 @@ export const WorkflowEditDialog: React.FC<WorkflowEditDialogProps> = ({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
-        <Button variant='outline'>Edit</Button>
+        <Button variant='outline'>Settings / JSON</Button>
       </DialogTrigger>
       <DialogContent className='max-h-[85vh] overflow-y-auto'>
         <DialogHeader>

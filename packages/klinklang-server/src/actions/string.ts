@@ -3,9 +3,13 @@ import { z } from 'zod'
 import { ActionWorker } from './base.ts'
 
 export const regexpInputSchema = z.object({
-  text: z.string(),
-  pattern: z.string(),
-  flags: z.string().optional()
+  text: z.string().meta({ title: 'Text', 'x-ui-widget': 'textarea' }),
+  pattern: z.string().meta({
+    title: 'Pattern',
+    description: 'A JavaScript-compatible safe regular expression.',
+    'x-ui-widget': 'code'
+  }),
+  flags: z.string().optional().meta({ title: 'Flags', description: 'For example: g, i, m, s, u, or v.' })
 }).strict().superRefine((input, context) => {
   try {
     const regex = new RegExp(input.pattern, input.flags)

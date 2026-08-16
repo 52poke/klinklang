@@ -1,13 +1,19 @@
 import { deepEqual, equal, ok } from 'node:assert/strict'
 import { describe, test } from 'node:test'
 import {
+  connectWorkflowStates,
   eventPredicateSchema,
   getStateTransitions,
   choiceRuleSchema,
+  projectWorkflowGraph,
+  removeWorkflowState,
+  renameWorkflowState,
+  validateWorkflowGraph,
   workflowCreateRequestSchema,
   workflowDetailResponseSchema,
   workflowInstanceSchema,
-  workflowMetadataSchema
+  workflowMetadataSchema,
+  workflowUpdateRequestSchema
 } from '../src/index.ts'
 
 const workflowId = '00000000-0000-4000-8000-000000000001'
@@ -69,6 +75,12 @@ void describe('workflow domain schemas', () => {
     }).success)
   })
 
+  void test('requires optimistic concurrency data for workflow updates', () => {
+    equal(workflowUpdateRequestSchema.safeParse({ name: 'Updated' }).success, false)
+    equal(workflowUpdateRequestSchema.safeParse({ expectedRevision: 2 }).success, false)
+    equal(workflowUpdateRequestSchema.safeParse({ name: 'Updated', expectedRevision: 2 }).success, true)
+  })
+
   void test('describes outgoing edges consistently for runtime and visualization', () => {
     const choice = {
       Type: 'Choice' as const,
@@ -95,6 +107,50 @@ void describe('workflow domain schemas', () => {
       And: [{ Variable: '$.kind', StringEquals: 'article', Next: 'Nested' }],
       Next: 'Publish'
     }).success, false)
+  })
+
+  void test('projects and edits graphs without creating a second workflow model', () => {
+    const definition = {
+      StartAt: 'Fetch',
+      States: {
+        Fetch: { Type: 'Task' as const, Resource: 'REQUEST', Next: 'Decide' },
+        Decide: {
+          Type: 'Choice' as const,
+          Choices: [{ Variable: '$.ok', BooleanEquals: true, Next: 'Done' }],
+          Default: 'Failed'
+        },
+        Done: { Type: 'Succeed' as const },
+        Failed: { Type: 'Fail' as const, Error: 'FAILED' }
+      }
+    }
+
+    const graph = projectWorkflowGraph(definition)
+    deepEqual(graph.nodes.map(node => node.id), ['Fetch', 'Decide', 'Done', 'Failed'])
+    deepEqual(graph.edges.map(edge => [edge.source, edge.sourceHandle, edge.target]), [
+      ['Fetch', 'next', 'Decide'],
+      ['Decide', 'choice:0', 'Done'],
+      ['Decide', 'default', 'Failed']
+    ])
+
+    const renamed = renameWorkflowState(definition, 'Done', 'Published')
+    equal(renamed.States.Decide.Type === 'Choice' && renamed.States.Decide.Choices[0].Next, 'Published')
+    deepEqual(definition.States, {
+      Fetch: { Type: 'Task', Resource: 'REQUEST', Next: 'Decide' },
+      Decide: {
+        Type: 'Choice',
+        Choices: [{ Variable: '$.ok', BooleanEquals: true, Next: 'Done' }],
+        Default: 'Failed'
+      },
+      Done: { Type: 'Succeed' },
+      Failed: { Type: 'Fail', Error: 'FAILED' }
+    })
+
+    const reconnected = connectWorkflowStates(renamed, 'Decide', 'Failed', 'choice:0')
+    equal(reconnected.States.Decide.Type === 'Choice' && reconnected.States.Decide.Choices[0].Next, 'Failed')
+    deepEqual(validateWorkflowGraph(reconnected), [])
+
+    const removed = removeWorkflowState(reconnected, 'Published')
+    equal(Object.hasOwn(removed.States, 'Published'), false)
   })
 
   void test('parses execution inspection history and remains compatible with legacy records', () => {

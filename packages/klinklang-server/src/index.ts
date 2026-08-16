@@ -16,6 +16,7 @@ import { httpErrorHandler } from './lib/http-errors.ts'
 import { register } from './lib/register.ts'
 import { RedisSessionStore } from './lib/session-store.ts'
 import { fediRoutes } from './routes/fedi.ts'
+import actionRoutes from './routes/actions.ts'
 import oauth from './routes/oauth.ts'
 import terminologyRoutes from './routes/terminology.ts'
 import translateRoutes from './routes/translate.ts'
@@ -72,6 +73,7 @@ const launch = async (): Promise<void> => {
   server.decorateRequest('user', null)
   await server.register(oauth)
   await server.register(userRoutes)
+  await server.register(actionRoutes)
   await server.register(workflowRoutes)
   await server.register(workflowVersionRoutes)
   await server.register(terminologyRoutes)

@@ -1,6 +1,7 @@
 import type { Job, JobsOptions } from 'bullmq'
 import { setTimeout as delay } from 'node:timers/promises'
-import type { ZodType } from 'zod'
+import { actionJsonSchema, type ActionCatalogEntry } from '@mudkipme/klinklang-domain'
+import { z, type ZodType } from 'zod'
 import type { WorkerType } from './base.ts'
 import { DiscordMessageWorker, discordMessageInputSchema, discordMessageOutputSchema } from './discord.ts'
 import { FediPostWorker, fediPostInputSchema, fediPostOutputSchema } from './fedi.ts'
@@ -178,6 +179,19 @@ export type ActionType = keyof typeof actionRegistry
 
 // Object.keys cannot preserve literal keys; the registry remains the runtime source.
 export const SUPPORTED_ACTION_TYPES = Object.freeze(Object.keys(actionRegistry) as ActionType[])
+
+export function getActionCatalog (): ActionCatalogEntry[] {
+  return Object.entries(actionRegistry).map(([type, registration]) => ({
+    type,
+    display: registration.display,
+    inputSchema: actionJsonSchema.parse(z.toJSONSchema(registration.inputSchema, { io: 'input' })),
+    outputSchema: actionJsonSchema.parse(z.toJSONSchema(registration.outputSchema)),
+    timeoutMs: registration.timeoutMs,
+    retry: registration.retry,
+    sideEffect: registration.sideEffect,
+    idempotency: registration.idempotency
+  }))
+}
 
 export function isActionType (value: string): value is ActionType {
   return Object.hasOwn(actionRegistry, value)

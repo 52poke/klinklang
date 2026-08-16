@@ -6,8 +6,11 @@ import { ActionWorker } from './base.ts'
 import type { ActionContract } from './interfaces.ts'
 
 export const getHTMLInputSchema = z.object({
-  title: z.string().min(1),
-  variants: z.array(z.enum(['zh-hans', 'zh-hant'])).optional()
+  title: z.string().min(1).meta({ title: 'Page title', description: 'Wiki page to fetch.' }),
+  variants: z.array(z.enum(['zh-hans', 'zh-hant'])).optional().meta({
+    title: 'Language variants',
+    description: 'Additional Chinese language variants to fetch.'
+  })
 }).strict()
 
 export const getHTMLOutputSchema = z.object({

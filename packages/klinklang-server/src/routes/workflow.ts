@@ -292,6 +292,12 @@ const workflowRoutes: FastifyPluginCallbackZod = (fastify) => {
         throw forbiddenError()
       }
 
+      if (request.body.expectedRevision !== workflow.currentRevision) {
+        throw workflowConflictError(
+          `Workflow revision ${request.body.expectedRevision} is stale; current revision is ${workflow.currentRevision}`
+        )
+      }
+
       const { data, issues } = validateWorkflowUpdateData(request.body, {
         name: workflow.name,
         isPrivate: workflow.isPrivate,

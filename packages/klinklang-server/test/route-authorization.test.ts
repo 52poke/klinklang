@@ -2,12 +2,13 @@ import { diContainer, fastifyAwilixPlugin } from '@fastify/awilix'
 import { serializerCompiler, validatorCompiler } from '@fastify/type-provider-zod'
 import type { PrismaClient, Workflow } from '@mudkipme/klinklang-prisma'
 import { asValue } from 'awilix'
-import { deepEqual, equal } from 'node:assert/strict'
+import { deepEqual, equal, ok } from 'node:assert/strict'
 import { after, before, describe, test } from 'node:test'
 import { fastify, type FastifyInstance, type FastifyRequest } from 'fastify'
 import type { Redis } from 'ioredis'
 import { httpErrorHandler } from '../src/lib/http-errors.ts'
 import type { Notification } from '../src/lib/notification.ts'
+import actionRoutes from '../src/routes/actions.ts'
 import workflowRoutes from '../src/routes/workflow.ts'
 import userRoutes from '../src/routes/user.ts'
 import type { FediverseService } from '../src/services/fediverse.ts'
@@ -156,6 +157,7 @@ void describe('workflow route authorization', () => {
       request.session = { userId } as FastifyRequest['session']
     })
     await app.register(workflowRoutes)
+    await app.register(actionRoutes)
     await app.register(userRoutes)
     await app.ready()
   })
@@ -168,6 +170,19 @@ void describe('workflow route authorization', () => {
     const response = await app.inject({ method: 'GET', url: '/api/workflow' })
 
     equal(response.statusCode, 401)
+  })
+
+  void test('serves the action catalog only to authenticated users', async () => {
+    const denied = await app.inject({ method: 'GET', url: '/api/actions' })
+    const allowed = await app.inject({
+      method: 'GET',
+      url: '/api/actions',
+      headers: { 'x-test-user': ownerId }
+    })
+
+    equal(denied.statusCode, 401)
+    equal(allowed.statusCode, 200)
+    ok(allowed.json<{ actions: unknown[] }>().actions.length > 0)
   })
 
   void test('limits authenticated listings to public and owned workflows', async () => {
@@ -259,6 +274,7 @@ void describe('workflow route authorization', () => {
       url: `/api/workflow/${privateWorkflowId}`,
       headers: { 'x-test-user': ownerId },
       payload: {
+        expectedRevision: 1,
         definition: {
           StartAt: 'Missing',
           States: { Done: { Type: 'Succeed' } }
@@ -276,19 +292,19 @@ void describe('workflow route authorization', () => {
       method: 'PUT',
       url: `/api/workflow/${publicWorkflowId}`,
       headers: { 'x-test-user': otherId },
-      payload: { name: 'Denied' }
+      payload: { name: 'Denied', expectedRevision: 1 }
     })
     const allowedPublic = await app.inject({
       method: 'PUT',
       url: `/api/workflow/${publicWorkflowId}`,
       headers: { 'x-test-user': sysopId },
-      payload: { name: 'Updated' }
+      payload: { name: 'Updated', expectedRevision: 1 }
     })
     const deniedPrivate = await app.inject({
       method: 'PUT',
       url: `/api/workflow/${privateWorkflowId}`,
       headers: { 'x-test-user': sysopId },
-      payload: { name: 'Denied' }
+      payload: { name: 'Denied', expectedRevision: 1 }
     })
 
     equal(deniedPublic.statusCode, 403)
