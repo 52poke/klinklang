@@ -1,18 +1,22 @@
 import { projectWorkflowGraph, type StateMachineDefinition } from '@mudkipme/klinklang-domain'
 import {
   Background,
+  type Connection,
   Controls,
+  type Edge,
   MarkerType,
   MiniMap,
+  Panel,
   ReactFlow,
-  useEdgesState,
+  useNodesInitialized,
   useNodesState,
-  type Connection,
-  type Edge
+  useReactFlow
 } from '@xyflow/react'
 import ELK from 'elkjs/lib/elk.bundled.js'
-import React, { useEffect, useMemo, useRef } from 'react'
-import { WorkflowNode, type WorkflowCanvasNode } from './WorkflowNode'
+import { LayoutGrid, Map } from 'lucide-react'
+import React, { useEffect, useMemo, useState } from 'react'
+import { Button } from '../../../components/ui/button'
+import { type WorkflowCanvasNode, WorkflowNode } from './WorkflowNode'
 
 interface WorkflowCanvasProps {
   definition: StateMachineDefinition
@@ -25,47 +29,20 @@ interface WorkflowCanvasProps {
 const elk = new ELK()
 const nodeTypes = { workflow: WorkflowNode }
 
-const getNodeHeight = (definition: StateMachineDefinition, stateName: string): number => {
-  const state = definition.States[stateName]
-  return state.Type === 'Choice' ? 86 + state.Choices.length * 20 : 72
-}
-
-async function layoutNodes (definition: StateMachineDefinition): Promise<WorkflowCanvasNode[]> {
-  const graph = projectWorkflowGraph(definition)
-  const layout = await elk.layout({
-    id: 'workflow',
-    layoutOptions: {
-      'elk.algorithm': 'layered',
-      'elk.direction': 'RIGHT',
-      'elk.spacing.nodeNode': '54',
-      'elk.layered.spacing.nodeNodeBetweenLayers': '100',
-      'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX'
-    },
-    children: graph.nodes.map(node => ({
-      id: node.id,
-      width: 220,
-      height: getNodeHeight(definition, node.id)
-    })),
-    edges: graph.edges.map(edge => ({
-      id: edge.id,
-      sources: [edge.source],
-      targets: [edge.target]
-    }))
-  })
-  const positions = new Map((layout.children ?? []).map(node => [node.id, {
-    x: node.x ?? 0,
-    y: node.y ?? 0
-  }]))
-  return graph.nodes.map(node => ({
-    id: node.id,
-    type: 'workflow',
-    position: positions.get(node.id) ?? { x: 0, y: 0 },
-    data: {
-      name: node.id,
-      state: node.state,
-      isStart: node.isStart
+// Wait for React Flow to measure the asynchronously laid out nodes before fitting.
+const FitLayout: React.FC<{ version: number }> = ({ version }) => {
+  const initialized = useNodesInitialized()
+  const { fitView } = useReactFlow()
+  useEffect(() => {
+    if (!initialized) return
+    const frame = requestAnimationFrame(() => {
+      void fitView({ padding: 0.2, maxZoom: 1 })
+    })
+    return () => {
+      cancelAnimationFrame(frame)
     }
-  }))
+  }, [fitView, initialized, version])
+  return null
 }
 
 export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
@@ -76,14 +53,72 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
   readOnly = false
 }) => {
   const graph = useMemo(() => projectWorkflowGraph(definition), [definition])
-  const projectedNodes = useMemo(() => new Map(graph.nodes.map(node => [node.id, node])), [graph.nodes])
-  const topologyKey = useMemo(() => JSON.stringify({
-    nodes: graph.nodes.map(node => node.id),
-    edges: graph.edges.map(edge => [edge.source, edge.sourceHandle, edge.target])
-  }), [graph])
-  const [nodes, setNodes, onNodesChange] = useNodesState<WorkflowCanvasNode>([])
-  const lastLayoutTopology = useRef<string | null>(null)
-  const initialEdges = useMemo<Edge[]>(() => graph.edges.map(edge => ({
+  const [positions, setPositions, onNodesChange] = useNodesState<WorkflowCanvasNode>([])
+  const [arrangeVersion, setArrangeVersion] = useState(0)
+  const [layoutVersion, setLayoutVersion] = useState(0)
+  const [layoutError, setLayoutError] = useState<string | null>(null)
+  const [showMap, setShowMap] = useState(false)
+  const topology = JSON.stringify({
+    children: graph.nodes.map(node => ({
+      id: node.id,
+      width: 240,
+      height: node.state.Type === 'Choice' ? 100 + node.state.Choices.length * 24 : 88
+    })),
+    // Invalid draft targets must not cause ELK to reject the entire graph.
+    edges: graph.edges.filter(edge => Object.hasOwn(definition.States, edge.target)).map(edge => ({
+      id: edge.id,
+      sources: [edge.source],
+      targets: [edge.target]
+    }))
+  })
+
+  useEffect(() => {
+    let cancelled = false
+    const shape = JSON.parse(topology) as {
+      children: Array<{ id: string; width: number; height: number }>
+      edges: Array<{ id: string; sources: string[]; targets: string[] }>
+    }
+    const applyPositions = (children: Array<{ id: string; x?: number; y?: number }>): void => {
+      if (cancelled) return
+      setPositions(children.map((node, index) => ({
+        id: node.id,
+        type: 'workflow',
+        position: { x: node.x ?? (index % 2) * 330, y: node.y ?? Math.floor(index / 2) * 200 },
+        data: { name: node.id, state: { Type: 'Succeed' }, isStart: false }
+      })))
+      setLayoutVersion(version => version + 1)
+    }
+    void elk.layout({
+      id: 'workflow',
+      layoutOptions: {
+        'elk.algorithm': 'layered',
+        'elk.direction': 'RIGHT',
+        'elk.spacing.nodeNode': '60',
+        'elk.layered.spacing.nodeNodeBetweenLayers': '100',
+        'elk.layered.nodePlacement.strategy': 'NETWORK_SIMPLEX'
+      },
+      ...shape
+    }).then(layout => {
+      if (cancelled) return
+      setLayoutError(null)
+      applyPositions(layout.children ?? [])
+    }).catch(() => {
+      if (cancelled) return
+      setLayoutError('Automatic layout is unavailable. You can still move and connect states.')
+      applyPositions(shape.children)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [topology, arrangeVersion, setPositions])
+
+  const nodes: WorkflowCanvasNode[] = positions.filter(node => Object.hasOwn(definition.States, node.id)).map(node => ({
+    ...node,
+    selected: node.id === selectedStateName,
+    ariaLabel: `${node.id}, ${definition.States[node.id].Type}${node.id === definition.StartAt ? ', start state' : ''}`,
+    data: { name: node.id, state: definition.States[node.id], isStart: node.id === definition.StartAt }
+  }))
+  const edges: Edge[] = graph.edges.filter(edge => Object.hasOwn(definition.States, edge.target)).map(edge => ({
     id: edge.id,
     source: edge.source,
     target: edge.target,
@@ -91,64 +126,82 @@ export const WorkflowCanvas: React.FC<WorkflowCanvasProps> = ({
     type: 'smoothstep',
     label: edge.kind === 'choice'
       ? `Rule ${(edge.choiceIndex ?? 0) + 1}`
-      : edge.kind === 'default' ? 'Default' : undefined,
-    markerEnd: { type: MarkerType.ArrowClosed },
-    animated: edge.source === selectedStateName
-  })), [graph.edges, selectedStateName])
-  const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
-
-  useEffect(() => {
-    if (lastLayoutTopology.current === topologyKey) return
-    lastLayoutTopology.current = topologyKey
-    let cancelled = false
-    void layoutNodes(definition).then(layout => {
-      if (!cancelled) setNodes(layout)
-    })
-    return () => { cancelled = true }
-  }, [definition, setNodes, topologyKey])
-
-  useEffect(() => {
-    setNodes(current => current.map(node => {
-      const projected = projectedNodes.get(node.id)
-      return projected === undefined
-        ? node
-        : {
-            ...node,
-            selected: projected.id === selectedStateName,
-            data: { name: projected.id, state: projected.state, isStart: projected.isStart }
-          }
-    }))
-    setEdges(initialEdges)
-  }, [initialEdges, projectedNodes, selectedStateName, setEdges, setNodes])
-
+      : edge.kind === 'default'
+      ? 'Otherwise'
+      : undefined,
+    markerEnd: { type: MarkerType.ArrowClosed, color: '#64748b' },
+    style: { stroke: edge.source === selectedStateName ? '#2563eb' : '#94a3b8', strokeWidth: 1.5 },
+    labelStyle: { fontSize: 11, fill: '#475569' },
+    labelBgStyle: { fill: '#f8fafc' }
+  }))
   const handleConnect = (connection: Connection): void => {
-    if (readOnly) return
-    onConnect(connection.source, connection.target, connection.sourceHandle ?? 'next')
+    if (!readOnly) onConnect(connection.source, connection.target, connection.sourceHandle ?? 'next')
   }
 
   return (
-    <div className='h-full min-h-[560px] overflow-hidden rounded-lg border bg-muted/20'>
+    <div className='workflow-canvas h-full min-h-0 bg-slate-50/80'>
       <ReactFlow<WorkflowCanvasNode>
         nodes={nodes}
         edges={edges}
         nodeTypes={nodeTypes}
         onNodesChange={onNodesChange}
-        onEdgesChange={onEdgesChange}
         onConnect={handleConnect}
-        onNodeClick={(_, node) => { onSelectState(node.id) }}
-        onPaneClick={() => { onSelectState(null) }}
+        onNodeClick={(_, node) => {
+          onSelectState(node.id)
+        }}
+        onKeyDown={(event) => {
+          if ((event.key === 'Enter' || event.key === ' ') && event.target instanceof HTMLElement) {
+            const name = event.target.closest<HTMLElement>('.react-flow__node')?.dataset.id
+            if (name !== undefined) onSelectState(name)
+          }
+        }}
+        onPaneClick={() => {
+          onSelectState(null)
+        }}
         nodesConnectable={!readOnly}
         nodesDraggable={!readOnly}
         edgesReconnectable={false}
         deleteKeyCode={null}
-        fitView
-        fitViewOptions={{ padding: 0.2 }}
-        minZoom={0.25}
+        minZoom={0.15}
         maxZoom={1.8}
       >
-        <Background gap={20} size={1} />
-        <MiniMap pannable zoomable />
-        <Controls />
+        <FitLayout version={layoutVersion} />
+        <Background gap={20} size={1} color='#cbd5e1' />
+        <Panel position='top-left' className='flex flex-wrap gap-1 rounded-lg border bg-card/95 p-1 shadow-sm'>
+          <Button
+            size='sm'
+            variant='ghost'
+            onClick={() => {
+              setArrangeVersion(version => version + 1)
+            }}
+          >
+            <LayoutGrid className='size-4' />Arrange
+          </Button>
+          <Button
+            size='sm'
+            variant={showMap ? 'secondary' : 'ghost'}
+            aria-label='Toggle minimap'
+            aria-pressed={showMap}
+            onClick={() => {
+              setShowMap(value => !value)
+            }}
+          >
+            <Map className='size-4' />
+          </Button>
+        </Panel>
+        {layoutError !== null && (
+          <Panel position='top-right'>
+            <p role='status' className='max-w-56 rounded border bg-card p-2 text-xs'>{layoutError}</p>
+          </Panel>
+        )}
+        <Panel
+          position='bottom-center'
+          className='pointer-events-none hidden rounded-full border bg-card/90 px-3 py-1.5 text-[11px] text-muted-foreground xl:block'
+        >
+          {readOnly ? 'Select a state to inspect it' : 'Drag to move · Connect the dots to link states'}
+        </Panel>
+        {showMap && <MiniMap pannable zoomable className='!h-24 !w-36' />}
+        <Controls aria-label='' showInteractive={false} />
       </ReactFlow>
     </div>
   )

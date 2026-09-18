@@ -1,4 +1,3 @@
-import Editor from '@monaco-editor/react'
 import {
   stateMachineDefinitionSchema,
   workflowMutationResponseSchema,
@@ -15,6 +14,11 @@ import { Input } from '../../components/ui/input'
 import { Label } from '../../components/ui/label'
 import { readJson } from '../../lib/api'
 import { TriggerEditor, buildTriggerPayloads, buildTriggerDrafts } from './WorkflowTriggerEditor'
+
+const DefinitionEditor = React.lazy(async () => {
+  const module = await import('./editor/DefinitionEditor')
+  return { default: module.DefinitionEditor }
+})
 
 interface WorkflowFormState {
   name: string
@@ -241,21 +245,10 @@ export const WorkflowEditPanel: React.FC<WorkflowEditPanelProps> = ({
 
       <div className='space-y-2'>
         <Label>Definition (JSON)</Label>
-        <div className='overflow-hidden rounded-md border'>
-          <Editor
-            height='320px'
-            language='json'
-            theme='vs'
-            value={definitionText}
-            onChange={(value) => {
-              setDefinitionText(value ?? '')
-            }}
-            options={{
-              minimap: { enabled: false },
-              fontSize: 12,
-              scrollBeyondLastLine: false
-            }}
-          />
+        <div className='h-80 overflow-hidden rounded-md border'>
+          <React.Suspense fallback={<p className='p-4 text-sm text-muted-foreground'>Loading JSON editor…</p>}>
+            <DefinitionEditor value={definitionText} onChange={setDefinitionText} readOnly={saving} />
+          </React.Suspense>
         </div>
       </div>
 

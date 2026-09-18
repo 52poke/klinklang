@@ -1,5 +1,6 @@
 import type { ActionJsonSchema } from '@mudkipme/klinklang-domain'
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useContext, useEffect, useId, useMemo, useRef, useState } from 'react'
+import { FieldValidityContext } from './field-validity'
 import { Button } from '../../../components/ui/button'
 import { Checkbox } from '../../../components/ui/checkbox'
 import { Input } from '../../../components/ui/input'
@@ -26,21 +27,35 @@ const isRecord = (value: unknown): value is Record<string, unknown> => (
 const toRecord = (value: unknown): Record<string, unknown> => isRecord(value) ? value : {}
 
 interface JsonValueEditorProps {
+  label?: string
   value: unknown
   onChange: (value: unknown) => void
   disabled?: boolean
 }
 
-export const JsonValueEditor: React.FC<JsonValueEditorProps> = ({ value, onChange, disabled }) => {
+export const JsonValueEditor: React.FC<JsonValueEditorProps> = ({ value, onChange, disabled, label = 'JSON input' }) => {
+  const id = useId()
+  const reportIssue = useContext(FieldValidityContext)
+  const committed = useRef(JSON.stringify(value ?? null))
   const [text, setText] = useState(() => JSON.stringify(value ?? null, null, 2))
   const [error, setError] = useState<string | null>(null)
   useEffect(() => {
-    // oxlint-disable-next-line react/react-compiler -- keep the draft synchronized when another state is selected
+    const serialized = JSON.stringify(value ?? null)
+    if (serialized === committed.current) return
+    committed.current = serialized
     setText(JSON.stringify(value ?? null, null, 2))
+    setError(null)
   }, [value])
+  useEffect(() => {
+    reportIssue(id, error === null ? null : `${label}: invalid JSON`)
+    return () => { reportIssue(id, null) }
+  }, [error, id, label, reportIssue])
   return (
     <div className='space-y-1'>
       <Textarea
+        aria-label={label}
+        aria-invalid={error !== null}
+        aria-describedby={error === null ? undefined : `${id}-error`}
         className='min-h-24 font-mono text-xs'
         value={text}
         disabled={disabled}
@@ -48,6 +63,7 @@ export const JsonValueEditor: React.FC<JsonValueEditorProps> = ({ value, onChang
           setText(event.target.value)
           try {
             const parsed: unknown = JSON.parse(event.target.value)
+            committed.current = JSON.stringify(parsed)
             setError(null)
             onChange(parsed)
           } catch (_cause: unknown) {
@@ -55,7 +71,7 @@ export const JsonValueEditor: React.FC<JsonValueEditorProps> = ({ value, onChang
           }
         }}
       />
-      {error !== null && <div className='text-xs text-destructive'>{error}</div>}
+      {error !== null && <div id={`${id}-error`} role='alert' className='text-xs text-destructive'>{error}</div>}
     </div>
   )
 }
@@ -69,15 +85,16 @@ interface RecordEditorProps {
 const RecordEditor: React.FC<RecordEditorProps> = ({ value, onChange, disabled }) => {
   const entries = Object.entries(toRecord(value))
   const updateEntry = (index: number, key: string, entryValue: string): void => {
+    if (entries.some(([name], entryIndex) => entryIndex !== index && name === key)) return
     const nextEntries: Array<[string, unknown]> = entries.map(([previousKey, previousValue], entryIndex) => (
       entryIndex === index ? [key, entryValue] : [previousKey, previousValue]
     ))
-    onChange(Object.fromEntries(nextEntries.filter(([name]) => name.length > 0)))
+    onChange(Object.fromEntries(nextEntries))
   }
   return (
     <div className='space-y-2'>
       {entries.map(([key, entryValue], index) => (
-        <div className='grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2' key={`${key}:${index}`}>
+        <div className='grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] gap-2' key={index}>
           <Input
             aria-label='Key'
             value={key}
@@ -123,18 +140,20 @@ const RecordEditor: React.FC<RecordEditorProps> = ({ value, onChange, disabled }
 }
 
 interface LiteralEditorProps {
+  label: string
   schema: FormJsonSchema
   value: unknown
   onChange: (value: unknown) => void
   disabled?: boolean
 }
 
-const LiteralEditor: React.FC<LiteralEditorProps> = ({ schema, value, onChange, disabled }) => {
+const LiteralEditor: React.FC<LiteralEditorProps> = ({ schema, value, onChange, disabled, label }) => {
   const enumOptions = schema.enum?.filter((entry): entry is string => typeof entry === 'string')
   const options = schema['x-ui-options'] ?? enumOptions
   if (options !== undefined && options.length > 0) {
     return (
       <select
+        aria-label={label}
         className='h-9 w-full rounded-md border bg-background px-3 text-sm'
         value={typeof value === 'string' ? value : options[0]}
         disabled={disabled}
@@ -159,6 +178,7 @@ const LiteralEditor: React.FC<LiteralEditorProps> = ({ schema, value, onChange, 
   if (schema.type === 'number' || schema.type === 'integer') {
     return (
       <Input
+        aria-label={label}
         type='number'
         step={schema.type === 'integer' ? 1 : 'any'}
         value={typeof value === 'number' ? value : 0}
@@ -203,12 +223,13 @@ const LiteralEditor: React.FC<LiteralEditorProps> = ({ schema, value, onChange, 
     )
   }
   if (schema.type === 'array' || schema.oneOf !== undefined || schema.anyOf !== undefined || schema.type === undefined) {
-    return <JsonValueEditor value={value} onChange={onChange} disabled={disabled} />
+    return <JsonValueEditor label={label} value={value} onChange={onChange} disabled={disabled} />
   }
   const widget = schema['x-ui-widget']
   if (widget === 'textarea' || widget === 'code') {
     return (
       <Textarea
+        aria-label={label}
         className={widget === 'code' ? 'min-h-20 font-mono text-xs' : 'min-h-20'}
         value={typeof value === 'string' ? value : ''}
         disabled={disabled}
@@ -218,6 +239,7 @@ const LiteralEditor: React.FC<LiteralEditorProps> = ({ schema, value, onChange, 
   }
   return (
     <Input
+        aria-label={label}
       type={schema.format === 'uri' ? 'url' : 'text'}
       value={typeof value === 'string' ? value : ''}
       disabled={disabled}
@@ -278,7 +300,7 @@ const ObjectFields: React.FC<ObjectFieldsProps> = ({ schema, value, onChange, di
                       type='button'
                       variant={expressionMode ? 'ghost' : 'secondary'}
                       size='sm'
-                      disabled={disabled}
+                      disabled={disabled === true || !expressionMode}
                       onClick={() => { setLiteral(createDefaultValue(propertySchema)) }}
                     >
                       Value
@@ -287,7 +309,7 @@ const ObjectFields: React.FC<ObjectFieldsProps> = ({ schema, value, onChange, di
                       type='button'
                       variant={expressionMode ? 'secondary' : 'ghost'}
                       size='sm'
-                      disabled={disabled}
+                      disabled={disabled === true || expressionMode}
                       onClick={() => { setExpression('$') }}
                     >
                       JSONPath
@@ -317,6 +339,7 @@ const ObjectFields: React.FC<ObjectFieldsProps> = ({ schema, value, onChange, di
             {(present || required.has(name)) && (expressionMode
               ? (
                 <Input
+                  aria-label={`${propertySchema.title ?? humanizeFieldName(name)} JSONPath`}
                   className='font-mono text-xs'
                   value={typeof expression === 'string' ? expression : '$'}
                   disabled={disabled}
@@ -325,6 +348,7 @@ const ObjectFields: React.FC<ObjectFieldsProps> = ({ schema, value, onChange, di
                 )
               : (
                 <LiteralEditor
+                  label={propertySchema.title ?? humanizeFieldName(name)}
                   schema={propertySchema}
                   value={value[name] ?? createDefaultValue(propertySchema)}
                   onChange={setLiteral}

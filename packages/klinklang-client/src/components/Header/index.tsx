@@ -2,6 +2,7 @@ import { LogIn, LogOut, Menu, User, UserCircle } from 'lucide-react'
 import React, { useCallback } from 'react'
 import { useNavigate } from 'react-router'
 import { useUserStore } from '../../store/user'
+import { KlinklangMenu } from '../Menu'
 import { Button } from '../ui/button'
 import {
   DropdownMenu,
@@ -25,17 +26,18 @@ export const KlinklangHeader: React.FC<KlinklangHeaderProps> = ({ onDrawerOpen }
 
   return (
     <header className='fixed inset-x-0 top-0 z-40 border-b bg-background/95 shadow-sm backdrop-blur'>
-      <div className='mx-auto flex h-14 max-w-6xl items-center gap-3 px-4'>
+      <div className='mx-auto flex h-14 max-w-[1800px] items-center gap-3 px-4'>
         <Button
           variant='ghost'
           size='icon'
           onClick={onDrawerOpen}
           aria-label='Open navigation'
-          className='rounded-full'
+          className='rounded-full md:hidden'
         >
           <Menu className='h-5 w-5' />
         </Button>
         <div className='text-base font-semibold'>52Poké Wiki Utilities</div>
+        <div className='ml-5 hidden md:block'><KlinklangMenu horizontal /></div>
         <div className='ml-auto'>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

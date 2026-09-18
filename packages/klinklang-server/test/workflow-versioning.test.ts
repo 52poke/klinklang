@@ -1,5 +1,6 @@
 import { diContainer, fastifyAwilixPlugin } from '@fastify/awilix'
 import { serializerCompiler, validatorCompiler } from '@fastify/type-provider-zod'
+import { renameWorkflowState, type StateMachineDefinition } from '@mudkipme/klinklang-domain'
 import type { PrismaClient, Workflow, WorkflowRevision } from '@mudkipme/klinklang-prisma'
 import { asValue } from 'awilix'
 import { deepEqual, equal, match, ok } from 'node:assert/strict'
@@ -280,6 +281,66 @@ void describe('workflow versioning routes', () => {
     equal(deleted.statusCode, 200)
     equal(workflows.has(duplicateId), false)
     equal(revisions.some(revision => revision.workflowId === duplicateId), false)
+  })
+
+  void test('round-trips visual Choice edits and rejects invalid or stale drafts without creating revisions', async () => {
+    const definition: StateMachineDefinition = {
+      StartAt: 'Start',
+      States: {
+        Start: { Type: 'Pass', Parameters: { count: 2 }, Next: 'Branch' },
+        Branch: {
+          Type: 'Choice',
+          Choices: [{ Variable: '$.count', NumericGreaterThan: 0, Next: 'Done' }],
+          Default: 'Failed'
+        },
+        Done: { Type: 'Succeed' },
+        Failed: { Type: 'Fail', Error: 'NO_RESULTS' }
+      }
+    }
+    const created = await app.inject({
+      method: 'POST', url: '/api/workflow', headers: { 'x-test-user': ownerId },
+      payload: { name: 'Visual draft', isPrivate: true, enabled: false, triggers: [], definition }
+    })
+    equal(created.statusCode, 200)
+    const id = created.json<{ workflow: { id: string } }>().workflow.id
+    const renamed = renameWorkflowState(definition, 'Done', 'Complete')
+    const saved = await app.inject({
+      method: 'PUT', url: `/api/workflow/${id}`, headers: { 'x-test-user': ownerId },
+      payload: { expectedRevision: 1, definition: renamed }
+    })
+    equal(saved.statusCode, 200)
+    equal(saved.json<{ workflow: { currentRevision: number } }>().workflow.currentRevision, 2)
+    const fetched = await app.inject({
+      method: 'GET', url: `/api/workflow/${id}/actions`, headers: { 'x-test-user': ownerId }
+    })
+    equal(fetched.statusCode, 200)
+    deepEqual(fetched.json<{ definition: StateMachineDefinition }>().definition, renamed)
+
+    for (const [variable, target] of [['$[', 'Complete'], ['$.count', 'Missing']]) {
+      const invalid = {
+        ...renamed,
+        States: { ...renamed.States, Branch: { Type: 'Choice', Choices: [{ Variable: variable, IsPresent: true, Next: target }] } }
+      }
+      const rejected = await app.inject({
+        method: 'PUT', url: `/api/workflow/${id}`, headers: { 'x-test-user': ownerId },
+        payload: { expectedRevision: 2, definition: invalid }
+      })
+      equal(rejected.statusCode, 400)
+      equal(rejected.json<{ error: string }>().error, 'INVALID_WORKFLOW')
+    }
+    const stale = await app.inject({
+      method: 'PUT', url: `/api/workflow/${id}`, headers: { 'x-test-user': ownerId },
+      payload: { expectedRevision: 1, definition }
+    })
+    equal(stale.statusCode, 409)
+    const forbidden = await app.inject({
+      method: 'PUT', url: `/api/workflow/${id}`, headers: { 'x-test-user': otherId },
+      payload: { expectedRevision: 2, definition }
+    })
+    equal(forbidden.statusCode, 403)
+    equal(workflows.get(id)?.currentRevision, 2)
+    equal(revisions.filter(revision => revision.workflowId === id).length, 2)
+    deepEqual(workflows.get(id)?.definition, renamed)
   })
 
   void test('does not expose private revision history to other users', async () => {

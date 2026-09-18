@@ -1,5 +1,7 @@
 import type { WorkflowMetadata } from '@mudkipme/klinklang-domain'
-import React, { useCallback, useEffect, useMemo } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
+import { Search, Workflow, Pencil, RefreshCw } from 'lucide-react'
+import { Input } from '../../components/ui/input'
 import { Link } from 'react-router'
 import {
   AlertDialog,
@@ -29,6 +31,8 @@ const formatDateTime = (value: string): string => {
 }
 
 export const Workflows: React.FC = () => {
+  const [query, setQuery] = useState('')
+  const [status, setStatus] = useState('all')
   const { currentUser } = useUserStore()
   const workflows = useWorkflowListStore((state) => state.workflows)
   const loading = useWorkflowListStore((state) => state.loading)
@@ -64,16 +68,18 @@ export const Workflows: React.FC = () => {
     void fetchWorkflows()
   }, [fetchWorkflows])
 
+  const filtered = workflows.filter(workflow => workflow.name.toLowerCase().includes(query.trim().toLowerCase()) && (status === 'all' || workflow.enabled === (status === 'enabled')))
+
   return (
     <div className='flex flex-col gap-4'>
       <div className='flex flex-wrap items-center justify-between gap-3'>
         <div>
-          <h2 className='text-lg font-semibold'>Workflows</h2>
+          <h1 className='text-2xl font-semibold tracking-tight'>Workflows</h1>
           <p className='text-sm text-muted-foreground'>
-            Manage and trigger workflows.
+            Build, manage, and run your wiki automations.
           </p>
         </div>
-        <div className='flex items-center gap-2'>
+        <div className='flex flex-wrap items-center gap-2'>
           {canCreate && (
             <>
               <WorkflowImportControl onImported={addWorkflow} />
@@ -92,42 +98,52 @@ export const Workflows: React.FC = () => {
             }}
             disabled={loading}
           >
-            {loading ? 'Refreshing...' : 'Refresh'}
+            <RefreshCw className={`size-4 ${loading ? 'animate-spin' : ''}`} />{loading ? 'Refreshing…' : 'Refresh'}
           </Button>
         </div>
       </div>
 
+      <div className='flex flex-wrap items-center gap-3 rounded-xl border bg-card p-3'>
+        <div className='relative min-w-48 flex-1'><Search className='absolute left-3 top-2.5 size-4 text-muted-foreground' /><Input className='pl-9' aria-label='Search workflows' placeholder='Search workflows…' value={query} onChange={(event) => { setQuery(event.target.value) }} /></div>
+        <select aria-label='Filter workflow status' className='h-9 rounded-md border bg-background px-3 text-sm' value={status} onChange={(event) => { setStatus(event.target.value) }}><option value='all'>All statuses</option><option value='enabled'>Enabled</option><option value='disabled'>Disabled</option></select>
+        <span className='text-xs text-muted-foreground' role='status'>{filtered.length} {filtered.length === 1 ? 'workflow' : 'workflows'}</span>
+      </div>
+      {loading && workflows.length === 0 && <div role='status' className='space-y-3'>{[1, 2, 3].map(item => <div key={item} className='h-40 animate-pulse rounded-xl border bg-muted/60' />)}<span className='sr-only'>Loading workflows…</span></div>}
       {error !== null && (
         <Card>
           <CardContent className='py-4 text-sm text-destructive'>{error}</CardContent>
         </Card>
       )}
 
-      {workflows.length === 0 && error === null && !loading && (
+      {filtered.length === 0 && error === null && !loading && (
         <Card>
-          <CardContent className='py-6 text-sm text-muted-foreground'>
-            No workflows found.
+          <CardContent className='flex flex-col items-center gap-3 py-12 text-center text-sm text-muted-foreground'>
+            <Workflow className='size-9 text-primary/50' />
+            <p className='font-medium text-foreground'>{workflows.length === 0 ? 'Your automations start here' : 'No matching workflows'}</p>
+            <p>{workflows.length === 0 ? 'Create a workflow or import an existing definition to get started.' : 'Try another name or change the status filter.'}</p>
+            {workflows.length > 0 && <Button variant='outline' size='sm' onClick={() => { setQuery(''); setStatus('all') }}>Clear filters</Button>}
           </CardContent>
         </Card>
       )}
 
       <div className='grid gap-4'>
-        {workflows.map((workflow) => (
+        {filtered.map((workflow) => (
           <Card key={workflow.id}>
             <CardHeader className='flex flex-row items-start justify-between gap-4'>
               <div className='space-y-1'>
-                <CardTitle className='text-base'>{workflow.name}</CardTitle>
+                <CardTitle className='text-base'><Link className='hover:text-primary hover:underline' to={`/pages/workflows/${workflow.id}`}>{workflow.name}</Link></CardTitle>
                 <div className='flex flex-wrap gap-2 text-xs text-muted-foreground'>
                   <span>{workflow.isPrivate ? 'Private' : 'Public'}</span>
                   <span>•</span>
-                  <span>{workflow.enabled ? 'Enabled' : 'Disabled'}</span>
+                  <span className={workflow.enabled ? 'font-medium text-emerald-700' : ''}>{workflow.enabled ? 'Enabled' : 'Disabled'}</span>
                   <span>•</span>
                   <span>{workflow.triggers.length} triggers</span>
                   <span>•</span>
                   <span>Revision {workflow.currentRevision}</span>
                 </div>
               </div>
-              <div className='flex flex-col gap-2'>
+              <div className='flex shrink-0 flex-col gap-2'>
+                <Button asChild variant='outline'><Link to={`/pages/workflows/${workflow.id}/edit`}><Pencil className='size-3.5' />Open editor</Link></Button>
                 <Button asChild variant='outline'>
                   <Link to={`/pages/workflows/${workflow.id}`}>View</Link>
                 </Button>
@@ -169,9 +185,11 @@ export const Workflows: React.FC = () => {
                           <div className='text-xs text-destructive'>{payloadErrors[workflow.id]}</div>
                         )}
                       </div>
+                      {(lastTriggerResult[workflow.id] ?? '') !== '' && <p role='status' className='text-sm text-destructive'>{lastTriggerResult[workflow.id]}</p>}
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancel</AlertDialogCancel>
                         <AlertDialogAction
+                          disabled={triggering[workflow.id]}
                           onClick={(event) => {
                             event.preventDefault()
                             const payloadText = payloadDrafts[workflow.id]
@@ -184,7 +202,7 @@ export const Workflows: React.FC = () => {
                               .catch(() => undefined)
                           }}
                         >
-                          Trigger
+                          {triggering[workflow.id] ? 'Starting…' : 'Trigger'}
                         </AlertDialogAction>
                       </AlertDialogFooter>
                     </AlertDialogContent>

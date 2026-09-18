@@ -1,4 +1,6 @@
 import {
+  addWorkflowState,
+  createUniqueStateName,
   renameWorkflowState,
   removeWorkflowState,
   updateWorkflowState,
@@ -8,6 +10,7 @@ import {
   type StateMachineDefinition,
   type TaskState
 } from '@mudkipme/klinklang-domain'
+import { Copy, MousePointer2 } from 'lucide-react'
 import React, { useMemo, useState } from 'react'
 import {
   AlertDialog,
@@ -25,6 +28,7 @@ import { Input } from '../../../components/ui/input'
 import { Label } from '../../../components/ui/label'
 import { Textarea } from '../../../components/ui/textarea'
 import { SchemaDrivenForm, JsonValueEditor } from './SchemaDrivenForm'
+import { ChoiceEditor } from './ChoiceEditor'
 import { createDefaultParameters } from './schema-form'
 
 interface WorkflowInspectorProps {
@@ -35,6 +39,7 @@ interface WorkflowInspectorProps {
   onSelectState: (stateName: string | null) => void
   onOpenJson: () => void
   onError: (message: string | null) => void
+  hasInvalidFields?: boolean
   readOnly?: boolean
 }
 
@@ -54,8 +59,9 @@ interface TransitionEditorProps {
 
 const TransitionEditor: React.FC<TransitionEditorProps> = ({ state, stateName, definition, onChange, disabled }) => (
   <div className='space-y-1.5'>
-    <Label>Next state</Label>
+    <Label htmlFor='next-state'>Next state</Label>
     <select
+      id='next-state'
       className='h-9 w-full rounded-md border bg-background px-3 text-sm'
       value={state.End === true ? '__end__' : (state.Next ?? '')}
       disabled={disabled}
@@ -71,7 +77,7 @@ const TransitionEditor: React.FC<TransitionEditorProps> = ({ state, stateName, d
         }
       }}
     >
-      <option value=''>Select a state</option>
+      <option value='' disabled>Select a state</option>
       <option value='__end__'>End workflow</option>
       {Object.keys(definition.States).map(name => (
         <option value={name} key={name}>{name === stateName ? `${name} (self)` : name}</option>
@@ -88,6 +94,7 @@ export const WorkflowInspector: React.FC<WorkflowInspectorProps> = ({
   onSelectState,
   onOpenJson,
   onError,
+  hasInvalidFields = false,
   readOnly = false
 }) => {
   const state = stateName === null ? undefined : definition.States[stateName]
@@ -98,8 +105,10 @@ export const WorkflowInspector: React.FC<WorkflowInspectorProps> = ({
 
   if (stateName === null || state === undefined) {
     return (
-      <div className='rounded-lg border bg-card p-4 text-sm text-muted-foreground'>
-        Select a state to edit its configuration.
+      <div className='flex h-full flex-col items-center justify-center gap-3 bg-card p-6 text-center text-sm text-muted-foreground'>
+        <MousePointer2 className='size-8 text-primary/60' />
+        <h2 className='font-semibold text-foreground'>State inspector</h2>
+        Select a state on the canvas to edit its configuration and connections.
       </div>
     )
   }
@@ -119,17 +128,17 @@ export const WorkflowInspector: React.FC<WorkflowInspectorProps> = ({
   }
 
   return (
-    <div className='space-y-5 rounded-lg border bg-card p-4'>
+    <div className='space-y-5 bg-card p-4'>
       <div>
         <div className='text-sm font-semibold'>State inspector</div>
-        <div className='text-xs text-muted-foreground'>{state.Type}</div>
+        <div className='mt-1 text-xs text-muted-foreground'>{state.Type}{definition.StartAt === stateName ? ' · Start state' : ''}</div>
       </div>
 
       <div className='space-y-1.5'>
-        <Label>State name</Label>
+        <Label htmlFor='state-name'>State name</Label>
         <div className='flex gap-2'>
-          <Input value={nameDraft} disabled={readOnly} onChange={(event) => { setNameDraft(event.target.value) }} />
-          <Button type='button' size='sm' variant='outline' disabled={readOnly || nameDraft.trim() === stateName} onClick={rename}>
+          <Input id='state-name' onKeyDown={(event) => { if (!hasInvalidFields && event.key === 'Enter' && nameDraft.trim() !== stateName) rename() }} value={nameDraft} disabled={readOnly} onChange={(event) => { setNameDraft(event.target.value) }} />
+          <Button type='button' size='sm' variant='outline' disabled={readOnly || hasInvalidFields || nameDraft.trim() === stateName} onClick={rename}>
             Rename
           </Button>
         </div>
@@ -138,8 +147,9 @@ export const WorkflowInspector: React.FC<WorkflowInspectorProps> = ({
       {state.Type === 'Task' && (
         <>
           <div className='space-y-1.5'>
-            <Label>Action</Label>
+            <Label htmlFor='state-action'>Action</Label>
             <select
+              id='state-action'
               className='h-9 w-full rounded-md border bg-background px-3 text-sm'
               value={state.Resource}
               disabled={readOnly}
@@ -199,12 +209,13 @@ export const WorkflowInspector: React.FC<WorkflowInspectorProps> = ({
 
       {(state.Type === 'Task' || state.Type === 'Pass') && (
         <>
-          <div className='space-y-3 rounded-md border p-3'>
-            <div className='text-xs font-medium'>Input and output paths</div>
+          <details className='space-y-3 rounded-md border p-3'>
+            <summary className='cursor-pointer text-xs font-medium'>Input and output paths</summary>
             {optionalPathKeys.map(key => (
               <div className='space-y-1' key={key}>
-                <Label>{key}</Label>
+                <Label htmlFor={`state-${key}`}>{key}</Label>
                 <Input
+                  id={`state-${key}`}
                   className='font-mono text-xs'
                   placeholder={key === 'ResultPath' ? '$.payload' : '$'}
                   value={state[key] ?? ''}
@@ -213,7 +224,7 @@ export const WorkflowInspector: React.FC<WorkflowInspectorProps> = ({
                 />
               </div>
             ))}
-          </div>
+          </details>
           <TransitionEditor
             state={state}
             stateName={stateName}
@@ -227,16 +238,18 @@ export const WorkflowInspector: React.FC<WorkflowInspectorProps> = ({
       {state.Type === 'Fail' && (
         <>
           <div className='space-y-1.5'>
-            <Label>Error</Label>
+            <Label htmlFor='state-error'>Error</Label>
             <Input
+              id='state-error'
               value={state.Error ?? ''}
               disabled={readOnly}
               onChange={(event) => { commitState({ ...state, Error: event.target.value.length > 0 ? event.target.value : undefined }) }}
             />
           </div>
           <div className='space-y-1.5'>
-            <Label>Cause</Label>
+            <Label htmlFor='state-cause'>Cause</Label>
             <Textarea
+              id='state-cause'
               value={state.Cause ?? ''}
               disabled={readOnly}
               onChange={(event) => { commitState({ ...state, Cause: event.target.value.length > 0 ? event.target.value : undefined }) }}
@@ -246,14 +259,16 @@ export const WorkflowInspector: React.FC<WorkflowInspectorProps> = ({
       )}
 
       {state.Type === 'Choice' && (
-        <div className='space-y-3 rounded-md border border-amber-300 bg-amber-50 p-3 text-xs dark:border-amber-800 dark:bg-amber-950'>
-          <div className='font-medium'>Choice conditions are read-only in this milestone.</div>
-          <div className='text-muted-foreground'>You can reconnect its existing rule and default handles on the canvas, or edit the conditions in JSON.</div>
-          <Button type='button' size='sm' variant='outline' onClick={onOpenJson}>Edit JSON</Button>
-        </div>
+        <ChoiceEditor state={state} definition={definition} onChange={commitState} onOpenJson={onOpenJson} disabled={readOnly} />
       )}
 
+      {state.Type === 'Succeed' && <p className='rounded-lg border bg-emerald-50 p-3 text-xs leading-relaxed text-emerald-800'>The workflow completes successfully when it reaches this state. No further configuration is needed.</p>}
       <div className='flex flex-wrap gap-2 border-t pt-4'>
+        <Button type='button' size='sm' variant='outline' disabled={readOnly || hasInvalidFields} onClick={() => {
+          const name = createUniqueStateName(definition, `${stateName}_copy`)
+          onChange(addWorkflowState(definition, name, state))
+          onSelectState(name)
+        }}><Copy className='size-3.5' />Duplicate</Button>
         {definition.StartAt !== stateName && (
           <Button
             type='button'
@@ -271,7 +286,7 @@ export const WorkflowInspector: React.FC<WorkflowInspectorProps> = ({
               type='button'
               size='sm'
               variant='destructive'
-              disabled={readOnly || Object.keys(definition.States).length === 1}
+              disabled={readOnly || hasInvalidFields || Object.keys(definition.States).length === 1}
             >
               Delete state
             </Button>

@@ -1,7 +1,7 @@
 import type { StateDefinition } from '@mudkipme/klinklang-domain'
-import { Handle, Position, type Node, type NodeProps } from '@xyflow/react'
+import { Handle, Position, useUpdateNodeInternals, type Node, type NodeProps } from '@xyflow/react'
 import { CheckCircle2, CircleX, GitBranch, Play, Workflow } from 'lucide-react'
-import React from 'react'
+import React, { useLayoutEffect } from 'react'
 
 export type WorkflowNodeData = {
   name: string
@@ -29,14 +29,17 @@ const StateIcon: React.FC<{ type: StateDefinition['Type'] }> = ({ type }) => {
 
 export const WorkflowNode: React.FC<NodeProps<WorkflowCanvasNode>> = ({ data, selected }) => {
   const { state } = data
+  const updateNodeInternals = useUpdateNodeInternals()
+  const handleCount = state.Type === 'Choice' ? state.Choices.length + 1 : 1
+  useLayoutEffect(() => { updateNodeInternals(data.name) }, [data.name, handleCount, state.Type, updateNodeInternals])
   return (
-    <div className={`min-w-52 rounded-lg border-2 px-4 py-3 shadow-sm ${stateStyle[state.Type]} ${selected ? 'ring-2 ring-primary ring-offset-2' : ''}`}>
+    <div className={`w-60 rounded-xl border-2 px-4 py-3 shadow-sm transition-shadow ${stateStyle[state.Type]} ${selected ? 'ring-2 ring-blue-500 ring-offset-2' : ''}`}>
       <Handle type='target' position={Position.Left} className='!size-3 !border-2 !border-background !bg-primary' />
       <div className='flex items-start gap-2'>
         <div className='mt-0.5'><StateIcon type={state.Type} /></div>
         <div className='min-w-0 flex-1'>
-          <div className='truncate text-sm font-semibold'>{data.name}</div>
-          <div className='truncate text-[11px] text-muted-foreground'>
+          <div className='truncate text-sm font-semibold' title={data.name}>{data.name}</div>
+          <div className='truncate text-[11px] text-slate-600 dark:text-slate-300'>
             {state.Type === 'Task' ? state.Resource : state.Type}
           </div>
         </div>
@@ -45,27 +48,27 @@ export const WorkflowNode: React.FC<NodeProps<WorkflowCanvasNode>> = ({ data, se
         )}
       </div>
       {state.Type === 'Choice' && (
-        <div className='mt-2 space-y-1 border-t pt-2 text-[10px] text-muted-foreground'>
+        <div className='mt-2 border-t pt-2 text-[10px] text-slate-600 dark:text-slate-300'>
           {state.Choices.map((_, index) => (
-            <div className='relative' key={index}>
+            <div className='relative h-6 pr-2 leading-6' key={index}>
               Rule {index + 1}
               <Handle
                 id={`choice:${index}`}
                 type='source'
                 position={Position.Right}
                 className='!size-3 !border-2 !border-background !bg-amber-600'
-                style={{ top: 55 + index * 20 }}
+                style={{ top: '50%', right: -23 }} title={`Connect rule ${index + 1}`}
               />
             </div>
           ))}
-          <div className='relative'>
-            Default
+          <div className='relative h-6 pr-2 leading-6'>
+            Otherwise
             <Handle
               id='default'
               type='source'
               position={Position.Right}
               className='!size-3 !border-2 !border-background !bg-amber-600'
-              style={{ top: 55 + state.Choices.length * 20 }}
+              style={{ top: '50%', right: -23 }} title='Connect default branch'
             />
           </div>
         </div>

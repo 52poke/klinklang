@@ -20,10 +20,11 @@ const menus = [
 ]
 
 export interface KlinklangMenuProps {
+  horizontal?: boolean
   onNavigate?: () => void
 }
 
-export const KlinklangMenu: React.FC<KlinklangMenuProps> = ({ onNavigate }) => {
+export const KlinklangMenu: React.FC<KlinklangMenuProps> = ({ onNavigate, horizontal = false }) => {
   const { currentUser } = useUserStore()
   const canTranslate = useMemo(() => {
     const groups = currentUser?.groups ?? []
@@ -31,7 +32,7 @@ export const KlinklangMenu: React.FC<KlinklangMenuProps> = ({ onNavigate }) => {
   }, [currentUser])
 
   return (
-    <nav className='flex flex-col gap-1'>
+    <nav aria-label='Main navigation' className={horizontal ? 'flex items-center gap-1' : 'flex flex-col gap-1'}>
       {menus.filter(menu => !(menu.requiresTranslate ?? false) || canTranslate).map((menu) => (
         <NavLink
           key={menu.title}
@@ -40,7 +41,7 @@ export const KlinklangMenu: React.FC<KlinklangMenuProps> = ({ onNavigate }) => {
           className={({ isActive }) =>
             cn(
               'rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-muted',
-              isActive && 'bg-muted text-foreground'
+              isActive ? 'bg-primary/10 text-primary' : 'text-muted-foreground'
             )}
         >
           {menu.title}

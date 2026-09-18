@@ -1,4 +1,5 @@
 import React, { useCallback, useMemo, useRef, useState } from 'react'
+import { CopyButton } from '../../components/CopyButton'
 import { Button } from '../../components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card'
 import { Label } from '../../components/ui/label'
@@ -105,7 +106,7 @@ export const Translate: React.FC = () => {
       <div className='mx-auto flex w-full max-w-6xl flex-col gap-6'>
         <Card>
           <CardHeader>
-            <CardTitle>LLM Translation</CardTitle>
+            <CardTitle><h1>LLM Translation</h1></CardTitle>
           </CardHeader>
           <CardContent>
             <div className='text-xs text-muted-foreground'>Translation requires sysop or bot permissions.</div>
@@ -119,13 +120,14 @@ export const Translate: React.FC = () => {
     <div className='mx-auto flex w-full max-w-6xl flex-col gap-6'>
       <Card>
         <CardHeader>
-          <CardTitle>LLM Translation</CardTitle>
+          <CardTitle><h1>LLM Translation</h1></CardTitle>
         </CardHeader>
         <CardContent className='space-y-4'>
           <div className='grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,0.5fr)]'>
             <div className='space-y-2'>
               <Label htmlFor='translate-from'>From</Label>
               <Select
+                disabled={loading}
                 value={sourceLng}
                 onValueChange={(value) => {
                   setSourceLng(value as 'en' | 'ja' | 'zh-hans' | 'zh-hant')
@@ -146,6 +148,7 @@ export const Translate: React.FC = () => {
             <div className='space-y-2'>
               <Label htmlFor='translate-to'>To</Label>
               <Select
+                disabled={loading}
                 value={targetLng}
                 onValueChange={(value) => {
                   setTargetLng(value as 'en' | 'ja' | 'zh-hans' | 'zh-hant')
@@ -173,14 +176,14 @@ export const Translate: React.FC = () => {
           <div className='text-xs text-muted-foreground'>
             Translation content may be sent to OpenRouter and underlying LLM providers.
           </div>
-          {error !== null && <div className='text-xs text-destructive'>{error}</div>}
+          {error !== null && <div role='alert' className='text-xs text-destructive'>{error}</div>}
         </CardContent>
       </Card>
 
       <div className='grid gap-4 lg:grid-cols-2'>
         <Card>
           <CardHeader>
-            <CardTitle>Source</CardTitle>
+            <CardTitle><Label htmlFor='translate-source'>Source</Label></CardTitle>
           </CardHeader>
           <CardContent>
             <Textarea
@@ -188,15 +191,18 @@ export const Translate: React.FC = () => {
               required
               rows={12}
               ref={sourceEl}
+              disabled={loading}
+              placeholder='Paste text to translate…'
             />
           </CardContent>
         </Card>
         <Card>
-          <CardHeader>
-            <CardTitle>Result</CardTitle>
+          <CardHeader className='flex flex-row items-center justify-between gap-2'>
+            <CardTitle><Label htmlFor='translate-result'>Result</Label></CardTitle>
+            <CopyButton text={result} disabled={loading} />
           </CardHeader>
           <CardContent>
-            <Textarea id='translate-result' rows={12} value={result} readOnly />
+            <Textarea aria-busy={loading} placeholder='Your translation will appear here.' id='translate-result' rows={12} value={result} readOnly />
           </CardContent>
         </Card>
       </div>
