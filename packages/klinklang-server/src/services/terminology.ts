@@ -12,6 +12,7 @@ export interface TerminologyReplaceInput {
 export interface TerminologyPair {
   source: string
   result: string
+  category: string
 }
 
 export class TerminologyService {
@@ -69,10 +70,10 @@ export class TerminologyService {
       && (term.lang === sourceLng || term.lang === resultLng)
     )
 
-    const texts = new Map<string, { source: string; result: string }>()
+    const texts = new Map<string, TerminologyPair>()
     for (const term of terms) {
       const key = `${term.category}:${term.textId}`
-      const item = texts.get(key) ?? { source: '', result: '' }
+      const item = texts.get(key) ?? { source: '', result: '', category: term.category }
       if (term.lang === sourceLng) {
         item.source = term.text
       } else {
@@ -91,7 +92,8 @@ export class TerminologyService {
     categories?: string[]
   ): Promise<TerminologyPair[]> {
     const all = await this.getTerminologyPairs(sourceLng, resultLng, categories)
-    const matched = all.filter(item => item.source !== '' && text.includes(item.source))
+    // Substring matches are candidates for the LLM to assess in context, not replacement rules.
+    const matched = all.filter(item => item.source !== '' && item.result !== '' && text.includes(item.source))
     return matched.sort((lhs, rhs) => rhs.source.length - lhs.source.length)
   }
 }
