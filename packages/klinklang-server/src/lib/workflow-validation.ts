@@ -1,4 +1,5 @@
 import {
+  isParameterTemplate,
   validateWorkflowGraph,
   workflowCreateRequestSchema,
   workflowUpdateRequestSchema,
@@ -125,6 +126,7 @@ function validateTriggers (triggers: WorkflowTrigger[]): string[] {
 }
 
 function hasDynamicParameter (value: unknown): boolean {
+  if (isParameterTemplate(value)) return true
   if (Array.isArray(value)) {
     return value.some(hasDynamicParameter)
   }

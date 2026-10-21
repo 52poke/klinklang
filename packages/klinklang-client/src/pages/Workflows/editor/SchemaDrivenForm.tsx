@@ -1,4 +1,4 @@
-import type { ActionJsonSchema } from '@mudkipme/klinklang-domain'
+import { isParameterTemplate, type ActionJsonSchema } from '@mudkipme/klinklang-domain'
 import React, { useContext, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { FieldValidityContext } from './field-validity'
 import { Button } from '../../../components/ui/button'
@@ -265,6 +265,8 @@ const ObjectFields: React.FC<ObjectFieldsProps> = ({ schema, value, onChange, di
         const expressionKey = `${name}.$`
         const expression = value[expressionKey]
         const expressionMode = expression !== undefined
+        const template = value[name]
+        const templateMode = !expressionMode && isParameterTemplate(template)
         const present = name in value || expressionMode
         const setLiteral = (nextValue: unknown): void => {
           onChange(Object.fromEntries([
@@ -298,9 +300,9 @@ const ObjectFields: React.FC<ObjectFieldsProps> = ({ schema, value, onChange, di
                   <>
                     <Button
                       type='button'
-                      variant={expressionMode ? 'ghost' : 'secondary'}
+                      variant={expressionMode || templateMode ? 'ghost' : 'secondary'}
                       size='sm'
-                      disabled={disabled === true || !expressionMode}
+                      disabled={disabled === true || (!expressionMode && !templateMode)}
                       onClick={() => { setLiteral(createDefaultValue(propertySchema)) }}
                     >
                       Value
@@ -314,6 +316,17 @@ const ObjectFields: React.FC<ObjectFieldsProps> = ({ schema, value, onChange, di
                     >
                       JSONPath
                     </Button>
+                    {(propertySchema.type === 'string' || templateMode) && (
+                      <Button
+                        type='button'
+                        variant={templateMode ? 'secondary' : 'ghost'}
+                        size='sm'
+                        disabled={disabled === true || templateMode}
+                        onClick={() => { setLiteral({ Template: typeof value[name] === 'string' ? value[name] : '' }) }}
+                      >
+                        Template
+                      </Button>
+                    )}
                     {!required.has(name) && (
                       <Button
                         type='button'
@@ -346,15 +359,25 @@ const ObjectFields: React.FC<ObjectFieldsProps> = ({ schema, value, onChange, di
                   onChange={(event) => { setExpression(event.target.value) }}
                 />
                 )
-              : (
-                <LiteralEditor
-                  label={propertySchema.title ?? humanizeFieldName(name)}
-                  schema={propertySchema}
-                  value={value[name] ?? createDefaultValue(propertySchema)}
-                  onChange={setLiteral}
-                  disabled={disabled}
-                />
-                ))}
+              : templateMode
+                ? (
+                  <Textarea
+                    aria-label={`${propertySchema.title ?? humanizeFieldName(name)} template`}
+                    className='min-h-20 font-mono text-xs'
+                    value={template.Template}
+                    disabled={disabled}
+                    onChange={(event) => { setLiteral({ Template: event.target.value }) }}
+                  />
+                  )
+                : (
+                  <LiteralEditor
+                    label={propertySchema.title ?? humanizeFieldName(name)}
+                    schema={propertySchema}
+                    value={value[name] ?? createDefaultValue(propertySchema)}
+                    onChange={setLiteral}
+                    disabled={disabled}
+                  />
+                  ))}
           </div>
         )
       })}

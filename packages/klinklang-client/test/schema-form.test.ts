@@ -26,6 +26,28 @@ void describe('schema-driven action forms', () => {
     deepEqual(validateParameterTemplate({ method: 'POST', 'url.$': '$.endpoint' }, requestSchema), [])
   })
 
+  void test('accepts template URLs and nested templates without validating unresolved strings as literals', () => {
+    deepEqual(validateParameterTemplate({
+      method: 'PURGE',
+      url: { Template: 'http://inazuma/wiki/{{encodeURI payload.page_title}}' }
+    }, requestSchema), [])
+    deepEqual(validateParameterTemplate({
+      messages: [{ text: { Template: '{{payload.message}}' } }]
+    }, {
+      type: 'object',
+      properties: {
+        messages: { type: 'array', items: { type: 'object', properties: { text: { type: 'string' } } } }
+      }
+    }), [])
+  })
+
+  void test('does not treat malformed template wrappers as dynamic strings', () => {
+    for (const url of [{ Template: 42 }, { Template: '{{url}}', extra: true }]) {
+      equal(validateParameterTemplate({ method: 'GET', url }, requestSchema)
+        .some(issue => issue.includes('expected a string')), true)
+    }
+  })
+
   void test('reports invalid literals and malformed JSONPath bindings', () => {
     const invalidUrl = validateParameterTemplate({ method: 'GET', url: 'relative' }, requestSchema)
     equal(invalidUrl.some(issue => issue.includes('absolute URL')), true)

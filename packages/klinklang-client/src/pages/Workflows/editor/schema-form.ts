@@ -1,4 +1,4 @@
-import type { ActionJsonSchema } from '@mudkipme/klinklang-domain'
+import { isParameterTemplate, type ActionJsonSchema } from '@mudkipme/klinklang-domain'
 
 export interface FormJsonSchema extends ActionJsonSchema {
   type?: string | string[]
@@ -79,6 +79,7 @@ function validateSchemaValue (
   context: ValidationContext
 ): void {
   const { path, issues, allowBindings = false } = context
+  if (isParameterTemplate(value)) return
   if (schema.oneOf !== undefined || schema.anyOf !== undefined) return
   if (schema.enum !== undefined && !schema.enum.some(candidate => Object.is(candidate, value))) {
     issues.push(`${path}: select one of the allowed values`)

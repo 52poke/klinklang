@@ -1,5 +1,6 @@
 import {
   getState,
+  isParameterTemplate,
   type PassState,
   type StateMachineDefinition,
   type TaskState
@@ -59,11 +60,8 @@ function resolveParameters (parameters: unknown, context: Record<string, unknown
     return parameters
   }
 
-  if ('Template' in parameters && Object.keys(parameters).length === 1) {
-    const templateValue = parameters.Template
-    if (typeof templateValue === 'string') {
-      return render(templateValue, context)
-    }
+  if (isParameterTemplate(parameters)) {
+    return render(parameters.Template, context)
   }
 
   const result: Record<string, unknown> = {}
