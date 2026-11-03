@@ -20,7 +20,7 @@
   "dependencies": {
     "jsonpath-plus": "^10.4.0",
     "safe-regex": "^2.1.1",
-    "zod": "^4.4.3"
+    "zod": "^4.6.6"
   },
   "devDependencies": {
     "@types/node": "^26.1.2",
